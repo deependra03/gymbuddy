@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+  
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-medium px-4 py-2.5 rounded-xl transition-all duration-150 flex items-center justify-center gap-2;
+  }
+
+  .btn-danger {
+    @apply bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium px-4 py-2.5 rounded-xl transition-all duration-150 flex items-center justify-center gap-2 border border-red-500/20;
+  }
+
+  .input-field {
+    @apply w-full bg-zinc-900 border border-zinc-700 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 text-zinc-100 placeholder-zinc-500 rounded-xl px-4 py-3 outline-none transition-all duration-150;
+  }
+
+  .card {
+    @apply bg-zinc-900 border border-zinc-800 rounded-2xl p-5;
+  }
+
+  .badge {
+    @apply text-xs font-semibold px-2.5 py-1 rounded-full;
+  }
+
+  .badge-beginner {
+    @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+  }
+  .badge-intermediate {
+    @apply bg-amber-500/10 text-amber-400 border border-amber-500/20;
+  }
+  .badge-advanced {
+    @apply bg-red-500/10 text-red-400 border border-red-500/20;
+  }
+
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+  }
+
+  .section-title {
+    @apply text-xl font-bold text-zinc-100 mb-1;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-zinc-400 mb-1.5;
+  }
+}
+
+/* Bottom nav safe area padding */
+.pb-nav {
+  padding-bottom: calc(4rem + var(--safe-bottom, 0px));
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+/* YouTube embed */
+.aspect-video iframe { width: 100%; height: 100%; }

@@ -1,0 +1,99 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { useAuthStore } from '@/lib/store';
+import { Dumbbell, LayoutDashboard, ListChecks, UtensilsCrossed, User, LogOut } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const navItems = [
+  { href: '/member/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/member/exercises', label: 'Exercises', icon: ListChecks },
+  { href: '/member/diet', label: 'Diet', icon: UtensilsCrossed },
+  { href: '/member/profile', label: 'Profile', icon: User },
+];
+
+export default function MemberLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, logout, isLoading, initFromStorage } = useAuthStore();
+
+  useEffect(() => {
+    initFromStorage();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) router.replace('/auth/login');
+      else if (user.role === 'admin') router.replace('/admin/members');
+    }
+  }, [user, isLoading]);
+
+  if (isLoading || !user) return null;
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/auth/login');
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-950">
+      {/* Top bar */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60 h-14 flex items-center justify-between px-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center">
+            <Dumbbell className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-black text-white text-lg tracking-tight">GymBuddy</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-semibold text-zinc-200">{user.name}</p>
+            <p className="text-[10px] text-zinc-500">Member</p>
+          </div>
+          {user.photoUrl ? (
+            <img src={user.photoUrl} className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-700" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs font-bold">
+              {user.name.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <button onClick={handleLogout} className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors">
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main content with top + bottom padding for nav bars */}
+      <main className="pt-14 pb-20 min-h-screen">
+        {children}
+      </main>
+
+      {/* Bottom navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 flex safe-area-inset-bottom">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-semibold transition-all duration-150',
+                active ? 'text-brand-400' : 'text-zinc-500 hover:text-zinc-300'
+              )}
+            >
+              <div className={cn(
+                'w-10 h-6 rounded-full flex items-center justify-center transition-all duration-150',
+                active ? 'bg-brand-500/15' : ''
+              )}>
+                <Icon className={cn('w-5 h-5', active && 'scale-105')} />
+              </div>
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}

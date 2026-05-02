@@ -1,0 +1,109 @@
+// This is your Prisma schema file
+// datasource: PostgreSQL via Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  admin
+  member
+}
+
+enum Level {
+  beginner
+  intermediate
+  advanced
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String
+  phone           String    @unique
+  email           String?   @unique
+  passwordHash    String
+  role            Role      @default(member)
+  photoUrl        String?
+  age             Int?
+  weight          Float?
+  height          Float?
+  goal            String?
+  joinDate        DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  assignedExercises MemberExercise[]
+  dietPlans         DietPlan[]
+
+  @@map("users")
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   // e.g. "Chest", "Legs", "Back", "Cardio"
+  focusArea   String   // e.g. "Strength", "Flexibility", "Endurance"
+  level       Level    @default(beginner)
+  videoUrl    String?
+  thumbnailUrl String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  memberExercises MemberExercise[]
+
+  @@map("exercises")
+}
+
+model MemberExercise {
+  id         String   @id @default(cuid())
+  memberId   String
+  exerciseId String
+  notes      String?
+  assignedAt DateTime @default(now())
+
+  member   User     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, exerciseId])
+  @@map("member_exercises")
+}
+
+model DietPlan {
+  id        String   @id @default(cuid())
+  memberId  String
+  title     String
+  content   String   // Rich text / JSON structured meals
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  member User @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("diet_plans")
+}
+
+model GalleryItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   // "recipe" | "exercise"
+  imageUrl    String?
+  videoUrl    String?
+  tags        String[] @default([])
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("gallery_items")
+}
