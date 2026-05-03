@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
-  Users, Plus, Search, X, Upload, Scan, UserCheck, UserX, Phone, Mail,
-  Scale, Ruler, Target, Edit3, Trash2, ChevronRight, Image as ImageIcon,
+  Users, Plus, Search, X, Upload, Scan, UserX, Phone, Edit3, Trash2, Image as ImageIcon,
+  Dumbbell,
 } from 'lucide-react';
-import { membersApi, uploadApi } from '@/lib/api';
-import { cn, formatDate, getInitials } from '@/lib/utils';
+import { membersApi, uploadApi, exercisesApi } from '@/lib/api';
+import { cn, formatDate, formatCurrency, getInitials, toDateInputValue } from '@/lib/utils';
 
 type Member = {
   id: string;
@@ -22,8 +22,14 @@ type Member = {
   goal?: string;
   isActive: boolean;
   joinDate: string;
+  membershipStart?: string | null;
+  membershipEnd?: string | null;
+  membershipPurchasePrice?: number | null;
   _count?: { assignedExercises: number; dietPlans: number };
 };
+
+type ExerciseRow = { id: string; title: string; category: string; level: string };
+type AssignmentRow = { id: string; notes?: string | null; exercise: ExerciseRow };
 
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -31,9 +37,14 @@ export default function AdminMembersPage() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [exerciseMember, setExerciseMember] = useState<Member | null>(null);
+  const [exerciseAssignments, setExerciseAssignments] = useState<AssignmentRow[]>([]);
+  const [exerciseLibrary, setExerciseLibrary] = useState<ExerciseRow[]>([]);
+  const [exerciseLoading, setExerciseLoading] = useState(false);
+  const [assignExerciseId, setAssignExerciseId] = useState('');
+  const [assignNotes, setAssignNotes] = useState('');
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<any>();
 
@@ -70,17 +81,105 @@ export default function AdminMembersPage() {
       height: m.height || '',
       goal: m.goal || '',
       photoUrl: m.photoUrl || '',
+      membershipStart: toDateInputValue(m.membershipStart),
+      membershipEnd: toDateInputValue(m.membershipEnd),
+      membershipPurchasePrice:
+        m.membershipPurchasePrice != null ? String(m.membershipPurchasePrice) : '',
     });
     setShowModal(true);
   };
 
+  const openExerciseModal = async (m: Member) => {
+    setExerciseMember(m);
+    setExerciseLoading(true);
+    setAssignExerciseId('');
+    setAssignNotes('');
+    try {
+      const [assignRes, libRes] = await Promise.all([
+        exercisesApi.forMember(m.id),
+        exercisesApi.list(),
+      ]);
+      setExerciseAssignments(assignRes.data);
+      setExerciseLibrary(libRes.data);
+    } catch {
+      toast.error('Failed to load exercises');
+    } finally {
+      setExerciseLoading(false);
+    }
+  };
+
+  const refreshExerciseAssignments = async () => {
+    if (!exerciseMember) return;
+    const r = await exercisesApi.forMember(exerciseMember.id);
+    setExerciseAssignments(r.data);
+    fetchMembers();
+  };
+
+  const handleAssignExercise = async () => {
+    if (!assignExerciseId || !exerciseMember) return;
+    try {
+      await membersApi.assignExercise(exerciseMember.id, {
+        exerciseId: assignExerciseId,
+        notes: assignNotes.trim() || undefined,
+      });
+      toast.success('Exercise assigned');
+      setAssignNotes('');
+      setAssignExerciseId('');
+      await refreshExerciseAssignments();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to assign exercise');
+    }
+  };
+
+  const handleRemoveExercise = async (exerciseId: string) => {
+    if (!exerciseMember || !confirm('Remove this exercise from the member?')) return;
+    try {
+      await membersApi.removeExercise(exerciseMember.id, exerciseId);
+      toast.success('Exercise removed');
+      await refreshExerciseAssignments();
+    } catch {
+      toast.error('Failed to remove exercise');
+    }
+  };
+
   const onSubmit = async (data: any) => {
     try {
+      const rawPrice =
+        data.membershipPurchasePrice === '' || data.membershipPurchasePrice == null
+          ? null
+          : parseFloat(String(data.membershipPurchasePrice));
+      const membershipPurchase =
+        rawPrice !== null && !Number.isNaN(rawPrice) ? rawPrice : null;
+
       if (editingMember) {
-        await membersApi.update(editingMember.id, data);
+        await membersApi.update(editingMember.id, {
+          name: data.name,
+          email: data.email || null,
+          age: data.age,
+          weight: data.weight,
+          height: data.height,
+          goal: data.goal,
+          photoUrl: data.photoUrl,
+          membershipStart: data.membershipStart || null,
+          membershipEnd: data.membershipEnd || null,
+          membershipPurchasePrice: membershipPurchase,
+        });
         toast.success('Member updated');
       } else {
-        await membersApi.create({ ...data, password: data.password || '123456' });
+        await membersApi.create({
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          password: data.password || '123456',
+          age: data.age,
+          weight: data.weight,
+          height: data.height,
+          goal: data.goal,
+          photoUrl: data.photoUrl,
+          membershipStart: data.membershipStart || undefined,
+          membershipEnd: data.membershipEnd || undefined,
+          membershipPurchasePrice: membershipPurchase ?? undefined,
+        });
         toast.success('Member created! Default password: 123456');
       }
       setShowModal(false);
@@ -215,7 +314,7 @@ export default function AdminMembersPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+              <div className="grid grid-cols-3 gap-2 mb-3 text-center">
                 {[
                   { label: 'Age', value: member.age ? `${member.age}y` : '—' },
                   { label: 'Weight', value: member.weight ? `${member.weight}kg` : '—' },
@@ -228,16 +327,41 @@ export default function AdminMembersPage() {
                 ))}
               </div>
 
-              <div className="flex gap-2">
+              {(member.membershipStart ||
+                member.membershipEnd ||
+                member.membershipPurchasePrice != null) && (
+                <div className="mb-3 rounded-lg bg-zinc-800/40 border border-zinc-800 px-3 py-2 text-xs text-zinc-400 space-y-1">
+                  <p className="font-semibold text-zinc-300">Membership</p>
+                  <p>
+                    {member.membershipStart || member.membershipEnd
+                      ? `${member.membershipStart ? formatDate(member.membershipStart) : '—'} → ${member.membershipEnd ? formatDate(member.membershipEnd) : '—'}`
+                      : 'Dates not set'}
+                  </p>
+                  {member.membershipPurchasePrice != null && (
+                    <p className="text-brand-400">
+                      Paid {formatCurrency(member.membershipPurchasePrice)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => openEdit(member)}
-                  className="flex-1 btn-secondary text-xs py-2"
+                  className="flex-1 min-w-[5rem] btn-secondary text-xs py-2"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> Edit
                 </button>
                 <button
+                  type="button"
+                  onClick={() => openExerciseModal(member)}
+                  className="flex-1 min-w-[5rem] btn-secondary text-xs py-2"
+                >
+                  <Dumbbell className="w-3.5 h-3.5" /> Exercises
+                </button>
+                <button
                   onClick={() => handleDeactivate(member.id)}
-                  className="flex-1 btn-danger text-xs py-2"
+                  className="flex-1 min-w-[5rem] btn-danger text-xs py-2"
                 >
                   <UserX className="w-3.5 h-3.5" /> Deactivate
                 </button>
@@ -337,6 +461,25 @@ export default function AdminMembersPage() {
                   <label className="label">Goal</label>
                   <input {...register('goal')} className="input-field" placeholder="Build muscle, lose weight..." />
                 </div>
+                <div>
+                  <label className="label">Membership start</label>
+                  <input type="date" {...register('membershipStart')} className="input-field" />
+                </div>
+                <div>
+                  <label className="label">Membership end</label>
+                  <input type="date" {...register('membershipEnd')} className="input-field" />
+                </div>
+                <div className="col-span-2">
+                  <label className="label">Membership price (INR)</label>
+                  <input
+                    {...register('membershipPurchasePrice')}
+                    className="input-field"
+                    placeholder="e.g. 4999"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -348,6 +491,117 @@ export default function AdminMembersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {exerciseMember && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
+            <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-6 border-b border-zinc-800">
+              <div>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Dumbbell className="w-5 h-5 text-brand-400" /> Assign exercises
+                </h2>
+                <p className="text-sm text-zinc-500 mt-0.5">{exerciseMember.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExerciseMember(null)}
+                className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                  Add from library
+                </p>
+                {exerciseLoading ? (
+                  <div className="h-24 rounded-xl bg-zinc-800/50 animate-pulse" />
+                ) : (
+                  <div className="space-y-3">
+                    <select
+                      value={assignExerciseId}
+                      onChange={(e) => setAssignExerciseId(e.target.value)}
+                      className="input-field w-full"
+                    >
+                      <option value="">Select an exercise…</option>
+                      {exerciseLibrary
+                        .filter(
+                          (ex) =>
+                            !exerciseAssignments.some((a) => a.exercise.id === ex.id)
+                        )
+                        .map((ex) => (
+                          <option key={ex.id} value={ex.id}>
+                            {ex.title} · {ex.category}
+                          </option>
+                        ))}
+                    </select>
+                    <input
+                      value={assignNotes}
+                      onChange={(e) => setAssignNotes(e.target.value)}
+                      className="input-field"
+                      placeholder="Optional note for the member (sets, reps…)"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAssignExercise}
+                      disabled={!assignExerciseId}
+                      className="btn-primary w-full disabled:opacity-50"
+                    >
+                      Add exercise
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                  Assigned ({exerciseAssignments.length})
+                </p>
+                {exerciseLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="h-14 rounded-xl bg-zinc-800/50 animate-pulse" />
+                    ))}
+                  </div>
+                ) : exerciseAssignments.length === 0 ? (
+                  <p className="text-sm text-zinc-500 text-center py-6 border border-dashed border-zinc-800 rounded-xl">
+                    No exercises yet. Pick one above to assign.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {exerciseAssignments.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-800/30 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-zinc-100 truncate">
+                            {a.exercise.title}
+                          </p>
+                          <p className="text-xs text-zinc-500 truncate">
+                            {a.exercise.category} · {a.exercise.level}
+                            {a.notes ? ` · ${a.notes}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExercise(a.exercise.id)}
+                          className="shrink-0 p-2 rounded-lg text-zinc-400 hover:bg-red-500/10 hover:text-red-400"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

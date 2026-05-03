@@ -37,6 +37,9 @@ router.get('/', requireAdmin, async (req, res) => {
         goal: true,
         isActive: true,
         joinDate: true,
+        membershipStart: true,
+        membershipEnd: true,
+        membershipPurchasePrice: true,
         _count: {
           select: {
             assignedExercises: true,
@@ -75,6 +78,9 @@ router.get('/:id', async (req, res) => {
         goal: true,
         isActive: true,
         joinDate: true,
+        membershipStart: true,
+        membershipEnd: true,
+        membershipPurchasePrice: true,
         assignedExercises: {
           include: {
             exercise: true,
@@ -109,7 +115,20 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, phone, email, password, age, weight, height, goal, photoUrl } = req.body;
+    const {
+      name,
+      phone,
+      email,
+      password,
+      age,
+      weight,
+      height,
+      goal,
+      photoUrl,
+      membershipStart,
+      membershipEnd,
+      membershipPurchasePrice,
+    } = req.body;
 
     try {
       const existing = await prisma.user.findUnique({ where: { phone } });
@@ -129,6 +148,14 @@ router.post(
           height: height ? parseFloat(height) : undefined,
           goal: goal || undefined,
           photoUrl: photoUrl || undefined,
+          membershipStart: membershipStart ? new Date(membershipStart) : undefined,
+          membershipEnd: membershipEnd ? new Date(membershipEnd) : undefined,
+          membershipPurchasePrice:
+            membershipPurchasePrice !== undefined &&
+            membershipPurchasePrice !== null &&
+            membershipPurchasePrice !== ''
+              ? parseFloat(membershipPurchasePrice)
+              : undefined,
         },
         select: {
           id: true,
@@ -155,7 +182,20 @@ router.post(
 
 // PUT /api/members/:id - Update member (admin only)
 router.put('/:id', requireAdmin, async (req, res) => {
-  const { name, email, age, weight, height, goal, photoUrl, isActive, password } = req.body;
+  const {
+    name,
+    email,
+    age,
+    weight,
+    height,
+    goal,
+    photoUrl,
+    isActive,
+    password,
+    membershipStart,
+    membershipEnd,
+    membershipPurchasePrice,
+  } = req.body;
 
   try {
     const data = {};
@@ -168,6 +208,18 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (photoUrl !== undefined) data.photoUrl = photoUrl;
     if (isActive !== undefined) data.isActive = isActive;
     if (password) data.passwordHash = await bcrypt.hash(password, 12);
+    if (membershipStart !== undefined) {
+      data.membershipStart = membershipStart ? new Date(membershipStart) : null;
+    }
+    if (membershipEnd !== undefined) {
+      data.membershipEnd = membershipEnd ? new Date(membershipEnd) : null;
+    }
+    if (membershipPurchasePrice !== undefined) {
+      data.membershipPurchasePrice =
+        membershipPurchasePrice === null || membershipPurchasePrice === ''
+          ? null
+          : parseFloat(membershipPurchasePrice);
+    }
 
     const member = await prisma.user.update({
       where: { id: req.params.id },
@@ -183,6 +235,9 @@ router.put('/:id', requireAdmin, async (req, res) => {
         height: true,
         goal: true,
         isActive: true,
+        membershipStart: true,
+        membershipEnd: true,
+        membershipPurchasePrice: true,
       },
     });
 

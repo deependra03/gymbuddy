@@ -35,6 +35,9 @@ model User {
   height          Float?
   goal            String?
   joinDate        DateTime  @default(now())
+  membershipStart       DateTime?
+  membershipEnd         DateTime?
+  membershipPurchasePrice Float?
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

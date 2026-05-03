@@ -37,6 +37,25 @@ export function formatDate(date: string | Date): string {
   });
 }
 
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/** YYYY-MM-DD for date inputs from API ISO strings (local calendar day) */
+export function toDateInputValue(iso: string | Date | null | undefined): string {
+  if (!iso) return '';
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function getBadgeClass(level: string): string {
   switch (level) {
     case 'beginner': return 'badge badge-beginner';

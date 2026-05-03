@@ -6,9 +6,9 @@ import { useAuthStore } from '@/lib/store';
 import { membersApi } from '@/lib/api';
 import {
   Flame, Dumbbell, UtensilsCrossed, ChevronRight, Target, Scale,
-  Ruler, Calendar, ListChecks, TrendingUp,
+  Ruler, Calendar, ListChecks, TrendingUp, CreditCard,
 } from 'lucide-react';
-import { formatDate, getBadgeClass } from '@/lib/utils';
+import { formatCurrency, formatDate, getBadgeClass } from '@/lib/utils';
 
 export default function MemberDashboard() {
   const { user } = useAuthStore();
@@ -29,6 +29,11 @@ export default function MemberDashboard() {
 
   const assignedExercises = profile?.assignedExercises ?? [];
   const latestDiet = profile?.dietPlans?.[0] ?? null;
+  const membershipEnd = profile?.membershipEnd ? new Date(profile.membershipEnd) : null;
+  const membershipActive =
+    membershipEnd && !Number.isNaN(membershipEnd.getTime())
+      ? membershipEnd.getTime() >= new Date().setHours(0, 0, 0, 0)
+      : null;
 
   const quickStats = [
     { label: 'Age', value: profile?.age ? `${profile.age} yrs` : '—', icon: Calendar },
@@ -57,6 +62,36 @@ export default function MemberDashboard() {
           </p>
         </div>
       </div>
+
+      {!loading &&
+        (profile?.membershipStart ||
+          profile?.membershipEnd ||
+          profile?.membershipPurchasePrice != null) && (
+          <div
+            className={`rounded-2xl border p-4 ${
+              membershipActive === false
+                ? 'border-amber-500/30 bg-amber-500/5'
+                : 'border-zinc-800 bg-zinc-900/50'
+            }`}
+          >
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5" /> Membership
+            </p>
+            <p className="text-sm text-zinc-200">
+              {profile.membershipStart ? formatDate(profile.membershipStart) : '—'} —{' '}
+              {profile.membershipEnd ? formatDate(profile.membershipEnd) : '—'}
+            </p>
+            {profile.membershipPurchasePrice != null && (
+              <p className="text-sm text-brand-400 mt-1 flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5" />
+                {formatCurrency(profile.membershipPurchasePrice)}
+              </p>
+            )}
+            {membershipActive === false && (
+              <p className="text-xs text-amber-400 mt-2">Your membership period has ended. Contact the gym to renew.</p>
+            )}
+          </div>
+        )}
 
       {/* Quick Stats */}
       {loading ? (

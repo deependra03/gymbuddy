@@ -5,9 +5,9 @@ import { useAuthStore } from '@/lib/store';
 import { membersApi } from '@/lib/api';
 import {
   User, Phone, Mail, Scale, Ruler, Calendar, Target,
-  LogOut, ChevronRight, Dumbbell, UtensilsCrossed,
+  LogOut, ChevronRight, Dumbbell, UtensilsCrossed, CreditCard,
 } from 'lucide-react';
-import { formatDate, getInitials } from '@/lib/utils';
+import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -41,6 +41,24 @@ export default function MemberProfilePage() {
         { icon: Ruler, label: 'Height', value: profile.height ? `${profile.height} cm` : '—' },
         { icon: Target, label: 'Goal', value: profile.goal || '—' },
         { icon: Calendar, label: 'Member since', value: formatDate(profile.joinDate) },
+        ...(profile.membershipStart || profile.membershipEnd
+          ? [
+              {
+                icon: Calendar,
+                label: 'Membership',
+                value: `${profile.membershipStart ? formatDate(profile.membershipStart) : '—'} → ${profile.membershipEnd ? formatDate(profile.membershipEnd) : '—'}`,
+              },
+            ]
+          : []),
+        ...(profile.membershipPurchasePrice != null
+          ? [
+              {
+                icon: CreditCard,
+                label: 'Membership paid',
+                value: formatCurrency(profile.membershipPurchasePrice),
+              },
+            ]
+          : []),
       ]
     : [];
 
