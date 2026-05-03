@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
+const { getMembershipEntitlement } = require('../lib/planEntitlement');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -127,6 +128,17 @@ router.get('/member/:memberId', authenticate, async (req, res) => {
   }
 
   try {
+    if (req.user.role !== 'admin') {
+      const memberRow = await prisma.user.findUnique({
+        where: { id: req.params.memberId },
+        select: { membershipStart: true, membershipEnd: true },
+      });
+      const ent = getMembershipEntitlement(memberRow || {});
+      if (ent === 'upcoming' || ent === 'expired') {
+        return res.json([]);
+      }
+    }
+
     const assignments = await prisma.memberExercise.findMany({
       where: { memberId: req.params.memberId },
       include: { exercise: true },

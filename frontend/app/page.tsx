@@ -30,7 +30,7 @@ export default function HomePage() {
       <div className="w-16 h-16 rounded-2xl bg-brand-500/10 flex items-center justify-center animate-pulse">
         <Dumbbell className="w-8 h-8 text-brand-500" />
       </div>
-      <p className="text-zinc-500 text-sm">Loading GymBuddy...</p>
+      <p className="text-zinc-600 dark:text-zinc-500 text-sm">Loading GymBuddy...</p>
     </div>
   );
 }

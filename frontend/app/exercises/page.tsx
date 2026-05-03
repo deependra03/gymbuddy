@@ -7,6 +7,7 @@ import {
   Dumbbell, Search, Play, X, ArrowLeft, Filter,
 } from 'lucide-react';
 import { getBadgeClass, getYouTubeEmbedUrl, EXERCISE_CATEGORIES, LEVELS } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type Exercise = {
   id: string;
@@ -55,23 +56,24 @@ export default function PublicExercisesPage() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/60">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400">
+            <Link href="/" className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="font-black text-white text-lg leading-none">Exercise Library</h1>
+              <h1 className="font-black text-zinc-900 dark:text-white text-lg leading-none">Exercise Library</h1>
               <p className="text-xs text-zinc-500 mt-0.5">{exercises.length} exercises</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-2 rounded-lg transition-colors ${showFilters ? 'bg-brand-500/10 text-brand-400' : 'hover:bg-zinc-800 text-zinc-400'}`}
+              className={`p-2 rounded-lg transition-colors ${showFilters ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400' : 'hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
             >
               <Filter className="w-4 h-4" />
             </button>
@@ -133,13 +135,13 @@ export default function PublicExercisesPage() {
           </div>
         ) : exercises.length === 0 ? (
           <div className="text-center py-20">
-            <Dumbbell className="w-14 h-14 text-zinc-700 mx-auto mb-3" />
-            <p className="text-zinc-400 font-medium">No exercises found</p>
+            <Dumbbell className="w-14 h-14 text-zinc-400 dark:text-zinc-700 mx-auto mb-3" />
+            <p className="text-zinc-600 dark:text-zinc-400 font-medium">No exercises found</p>
           </div>
         ) : (
           Object.entries(grouped).map(([category, exs]) => (
             <div key={category}>
-              <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <h2 className="text-sm font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-brand-500" />
                 {category}
               </h2>
@@ -147,15 +149,15 @@ export default function PublicExercisesPage() {
                 {exs.map((ex) => (
                   <div
                     key={ex.id}
-                    className="card hover:border-zinc-700 transition-colors cursor-pointer group"
+                    className="card hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer group"
                     onClick={() => setActiveVideo(ex)}
                   >
-                    <div className="relative -mx-5 -mt-5 mb-4 h-40 bg-zinc-800 rounded-t-2xl overflow-hidden">
+                    <div className="relative -mx-5 -mt-5 mb-4 h-40 bg-zinc-200 dark:bg-zinc-800 rounded-t-2xl overflow-hidden">
                       {ex.thumbnailUrl ? (
                         <img src={ex.thumbnailUrl} alt={ex.title} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Dumbbell className="w-10 h-10 text-zinc-700" />
+                          <Dumbbell className="w-10 h-10 text-zinc-500 dark:text-zinc-700" />
                         </div>
                       )}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -165,13 +167,13 @@ export default function PublicExercisesPage() {
                       </div>
                     </div>
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-zinc-100 text-sm">{ex.title}</h3>
+                      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{ex.title}</h3>
                       <span className={getBadgeClass(ex.level)}>{ex.level}</span>
                     </div>
                     {ex.description && (
                       <p className="text-xs text-zinc-500 line-clamp-2 mt-1">{ex.description}</p>
                     )}
-                    <p className="text-xs text-zinc-600 mt-2">{ex.focusArea}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-600 mt-2">{ex.focusArea}</p>
                   </div>
                 ))}
               </div>
@@ -209,7 +211,7 @@ export default function PublicExercisesPage() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="flex gap-2">
               <span className={getBadgeClass(activeVideo.level)}>{activeVideo.level}</span>
-              <span className="badge bg-zinc-800 text-zinc-400">{activeVideo.focusArea}</span>
+              <span className="badge bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">{activeVideo.focusArea}</span>
             </div>
             {activeVideo.description && (
               <p className="text-sm text-zinc-400 leading-relaxed">{activeVideo.description}</p>

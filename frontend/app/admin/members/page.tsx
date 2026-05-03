@@ -8,7 +8,15 @@ import {
   Dumbbell,
 } from 'lucide-react';
 import { membersApi, uploadApi, exercisesApi } from '@/lib/api';
-import { cn, formatDate, formatCurrency, getInitials, toDateInputValue } from '@/lib/utils';
+import {
+  cn,
+  formatDate,
+  formatCurrency,
+  formatMembershipDurationLabel,
+  getInitials,
+  toDateInputValue,
+  addMonthsToPlanEnd,
+} from '@/lib/utils';
 
 type Member = {
   id: string;
@@ -24,6 +32,7 @@ type Member = {
   joinDate: string;
   membershipStart?: string | null;
   membershipEnd?: string | null;
+  membershipDurationMonths?: number | null;
   membershipPurchasePrice?: number | null;
   _count?: { assignedExercises: number; dietPlans: number };
 };
@@ -47,6 +56,23 @@ export default function AdminMembersPage() {
   const [assignNotes, setAssignNotes] = useState('');
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<any>();
+  const membershipStartWatch = watch('membershipStart');
+
+  const applyPlanDuration = (months: number) => {
+    const start = membershipStartWatch as string | undefined;
+    if (!start) {
+      toast.error('Set plan start date first, then choose a duration.');
+      return;
+    }
+    const end = addMonthsToPlanEnd(start, months);
+    if (!end) {
+      toast.error('Could not compute end date');
+      return;
+    }
+    setValue('membershipEnd', end);
+    setValue('membershipDurationMonths', String(months));
+    toast.success('End date updated from plan length');
+  };
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -83,6 +109,8 @@ export default function AdminMembersPage() {
       photoUrl: m.photoUrl || '',
       membershipStart: toDateInputValue(m.membershipStart),
       membershipEnd: toDateInputValue(m.membershipEnd),
+      membershipDurationMonths:
+        m.membershipDurationMonths != null ? String(m.membershipDurationMonths) : '',
       membershipPurchasePrice:
         m.membershipPurchasePrice != null ? String(m.membershipPurchasePrice) : '',
     });
@@ -151,6 +179,12 @@ export default function AdminMembersPage() {
       const membershipPurchase =
         rawPrice !== null && !Number.isNaN(rawPrice) ? rawPrice : null;
 
+      const rawDur = data.membershipDurationMonths;
+      const durParsed =
+        rawDur === '' || rawDur == null ? null : parseInt(String(rawDur), 10);
+      const membershipDurationMonths =
+        durParsed !== null && !Number.isNaN(durParsed) ? durParsed : null;
+
       if (editingMember) {
         await membersApi.update(editingMember.id, {
           name: data.name,
@@ -162,6 +196,7 @@ export default function AdminMembersPage() {
           photoUrl: data.photoUrl,
           membershipStart: data.membershipStart || null,
           membershipEnd: data.membershipEnd || null,
+          membershipDurationMonths,
           membershipPurchasePrice: membershipPurchase,
         });
         toast.success('Member updated');
@@ -178,6 +213,7 @@ export default function AdminMembersPage() {
           photoUrl: data.photoUrl,
           membershipStart: data.membershipStart || undefined,
           membershipEnd: data.membershipEnd || undefined,
+          membershipDurationMonths: membershipDurationMonths ?? undefined,
           membershipPurchasePrice: membershipPurchase ?? undefined,
         });
         toast.success('Member created! Default password: 123456');
@@ -271,10 +307,10 @@ export default function AdminMembersPage() {
           {[...Array(6)].map((_, i) => (
             <div key={i} className="card animate-pulse space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-zinc-800" />
+                <div className="w-12 h-12 rounded-full bg-zinc-200 dark:bg-zinc-800" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-zinc-800 rounded w-3/4" />
-                  <div className="h-3 bg-zinc-800 rounded w-1/2" />
+                  <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
+                  <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-1/2" />
                 </div>
               </div>
             </div>
@@ -282,8 +318,8 @@ export default function AdminMembersPage() {
         </div>
       ) : members.length === 0 ? (
         <div className="card text-center py-16">
-          <Users className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-          <p className="text-zinc-400 font-medium">No members found</p>
+          <Users className="w-12 h-12 text-zinc-400 dark:text-zinc-700 mx-auto mb-3" />
+          <p className="text-zinc-600 dark:text-zinc-400 font-medium">No members found</p>
           <p className="text-zinc-600 text-sm mt-1">Add your first member to get started</p>
           <button onClick={openAdd} className="btn-primary mx-auto mt-4">
             <Plus className="w-4 h-4" /> Add Member
@@ -292,24 +328,24 @@ export default function AdminMembersPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {members.map((member) => (
-            <div key={member.id} className={cn('card hover:border-zinc-700 transition-colors cursor-pointer', !member.isActive && 'opacity-60')}>
+            <div key={member.id} className={cn('card hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer', !member.isActive && 'opacity-60')}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   {member.photoUrl ? (
-                    <img src={member.photoUrl} alt={member.name} className="w-12 h-12 rounded-full object-cover bg-zinc-800" />
+                    <img src={member.photoUrl} alt={member.name} className="w-12 h-12 rounded-full object-cover bg-zinc-200 dark:bg-zinc-800" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-400 font-bold text-sm">
+                    <div className="w-12 h-12 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm">
                       {getInitials(member.name)}
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold text-zinc-100">{member.name}</p>
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">{member.name}</p>
                     <p className="text-xs text-zinc-500 flex items-center gap-1">
                       <Phone className="w-3 h-3" /> {member.phone}
                     </p>
                   </div>
                 </div>
-                <span className={cn('badge', member.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500')}>
+                <span className={cn('badge', member.isActive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-500')}>
                   {member.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -320,9 +356,9 @@ export default function AdminMembersPage() {
                   { label: 'Weight', value: member.weight ? `${member.weight}kg` : '—' },
                   { label: 'Exercises', value: member._count?.assignedExercises ?? 0 },
                 ].map(({ label, value }) => (
-                  <div key={label} className="bg-zinc-800/50 rounded-lg p-2">
+                  <div key={label} className="bg-zinc-100 dark:bg-zinc-800/50 rounded-lg p-2">
                     <p className="text-xs text-zinc-500">{label}</p>
-                    <p className="text-sm font-semibold text-zinc-200">{value}</p>
+                    <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{value}</p>
                   </div>
                 ))}
               </div>
@@ -330,15 +366,20 @@ export default function AdminMembersPage() {
               {(member.membershipStart ||
                 member.membershipEnd ||
                 member.membershipPurchasePrice != null) && (
-                <div className="mb-3 rounded-lg bg-zinc-800/40 border border-zinc-800 px-3 py-2 text-xs text-zinc-400 space-y-1">
-                  <p className="font-semibold text-zinc-300">Membership</p>
+                <div className="mb-3 rounded-lg bg-zinc-100/80 border border-zinc-200 dark:bg-zinc-800/40 dark:border-zinc-800 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
+                  <p className="font-semibold text-zinc-800 dark:text-zinc-300">Membership</p>
                   <p>
                     {member.membershipStart || member.membershipEnd
                       ? `${member.membershipStart ? formatDate(member.membershipStart) : '—'} → ${member.membershipEnd ? formatDate(member.membershipEnd) : '—'}`
                       : 'Dates not set'}
                   </p>
+                  {formatMembershipDurationLabel(member.membershipDurationMonths ?? undefined) && (
+                    <p className="text-zinc-700 dark:text-zinc-300">
+                      Plan: {formatMembershipDurationLabel(member.membershipDurationMonths ?? undefined)}
+                    </p>
+                  )}
                   {member.membershipPurchasePrice != null && (
-                    <p className="text-brand-400">
+                    <p className="text-brand-600 dark:text-brand-400">
                       Paid {formatCurrency(member.membershipPurchasePrice)}
                     </p>
                   )}
@@ -375,10 +416,10 @@ export default function AdminMembersPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
-            <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-6 border-b border-zinc-800">
-              <h2 className="text-lg font-bold">{editingMember ? 'Edit Member' : 'Add New Member'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
+            <div className="sticky top-0 bg-white dark:bg-zinc-900 flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-800">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{editingMember ? 'Edit Member' : 'Add New Member'}</h2>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -386,9 +427,9 @@ export default function AdminMembersPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
               {/* OCR Upload */}
               {!editingMember && (
-                <div className="p-4 rounded-xl border border-dashed border-zinc-700 bg-zinc-800/30">
-                  <p className="text-sm font-medium text-zinc-300 mb-2 flex items-center gap-2">
-                    <Scan className="w-4 h-4 text-brand-400" /> Scan Physical Form (OCR)
+                <div className="p-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-100/50 dark:bg-zinc-800/30">
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-300 mb-2 flex items-center gap-2">
+                    <Scan className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Scan Physical Form (OCR)
                   </p>
                   <label className="btn-secondary text-sm w-full cursor-pointer">
                     {ocrLoading ? (
@@ -412,10 +453,10 @@ export default function AdminMembersPage() {
                 <label className="label">Profile Photo</label>
                 <div className="flex items-center gap-3">
                   {photoUrl ? (
-                    <img src={photoUrl} className="w-14 h-14 rounded-full object-cover bg-zinc-800" />
+                    <img src={photoUrl} className="w-14 h-14 rounded-full object-cover bg-zinc-200 dark:bg-zinc-800" />
                   ) : (
-                    <div className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6 text-zinc-600" />
+                    <div className="w-14 h-14 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-zinc-500 dark:text-zinc-600" />
                     </div>
                   )}
                   <label className="btn-secondary text-sm cursor-pointer">
@@ -461,16 +502,54 @@ export default function AdminMembersPage() {
                   <label className="label">Goal</label>
                   <input {...register('goal')} className="input-field" placeholder="Build muscle, lose weight..." />
                 </div>
-                <div>
-                  <label className="label">Membership start</label>
-                  <input type="date" {...register('membershipStart')} className="input-field" />
-                </div>
-                <div>
-                  <label className="label">Membership end</label>
-                  <input type="date" {...register('membershipEnd')} className="input-field" />
+                <div className="col-span-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-800/20 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Membership plan (optional)</p>
+                  <p className="text-xs text-zinc-500 leading-relaxed">
+                    Separate from join date: you can add the member today and set the plan to start later.
+                    Use plan length to set the end date automatically, or enter dates manually.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="label">Plan start</label>
+                      <input type="date" {...register('membershipStart')} className="input-field" />
+                    </div>
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="label">Plan end</label>
+                      <input type="date" {...register('membershipEnd')} className="input-field" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label">Plan length (fills end date)</label>
+                    <select
+                      className="input-field"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v) applyPlanDuration(Number(v));
+                        e.target.value = '';
+                      }}
+                    >
+                      <option value="">Choose 1–12 months or 2 years…</option>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <option key={m} value={m}>
+                          {m} month{m > 1 ? 's' : ''}
+                        </option>
+                      ))}
+                      <option value="24">2 years</option>
+                    </select>
+                  </div>
+                  <input type="hidden" {...register('membershipDurationMonths')} />
+                  <p className="text-[11px] text-zinc-600">
+                    Stored length:{' '}
+                    {formatMembershipDurationLabel(
+                      watch('membershipDurationMonths')
+                        ? parseInt(String(watch('membershipDurationMonths')), 10)
+                        : undefined
+                    ) || '— (set via menu above)'}
+                  </p>
                 </div>
                 <div className="col-span-2">
-                  <label className="label">Membership price (INR)</label>
+                  <label className="label">Plan purchase price (INR)</label>
                   <input
                     {...register('membershipPurchasePrice')}
                     className="input-field"
@@ -497,18 +576,18 @@ export default function AdminMembersPage() {
 
       {exerciseMember && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
-            <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-6 border-b border-zinc-800">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
+            <div className="sticky top-0 bg-white dark:bg-zinc-900 flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-800">
               <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <Dumbbell className="w-5 h-5 text-brand-400" /> Assign exercises
+                <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                  <Dumbbell className="w-5 h-5 text-brand-600 dark:text-brand-400" /> Assign exercises
                 </h2>
                 <p className="text-sm text-zinc-500 mt-0.5">{exerciseMember.name}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setExerciseMember(null)}
-                className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400"
+                className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -520,7 +599,7 @@ export default function AdminMembersPage() {
                   Add from library
                 </p>
                 {exerciseLoading ? (
-                  <div className="h-24 rounded-xl bg-zinc-800/50 animate-pulse" />
+                  <div className="h-24 rounded-xl bg-zinc-200 dark:bg-zinc-800/50 animate-pulse" />
                 ) : (
                   <div className="space-y-3">
                     <select
@@ -565,11 +644,11 @@ export default function AdminMembersPage() {
                 {exerciseLoading ? (
                   <div className="space-y-2">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-14 rounded-xl bg-zinc-800/50 animate-pulse" />
+                      <div key={i} className="h-14 rounded-xl bg-zinc-200 dark:bg-zinc-800/50 animate-pulse" />
                     ))}
                   </div>
                 ) : exerciseAssignments.length === 0 ? (
-                  <p className="text-sm text-zinc-500 text-center py-6 border border-dashed border-zinc-800 rounded-xl">
+                  <p className="text-sm text-zinc-500 text-center py-6 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl">
                     No exercises yet. Pick one above to assign.
                   </p>
                 ) : (
@@ -577,10 +656,10 @@ export default function AdminMembersPage() {
                     {exerciseAssignments.map((a) => (
                       <li
                         key={a.id}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-800/30 px-3 py-2"
+                        className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-800/30 px-3 py-2"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-zinc-100 truncate">
+                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
                             {a.exercise.title}
                           </p>
                           <p className="text-xs text-zinc-500 truncate">
@@ -591,7 +670,7 @@ export default function AdminMembersPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveExercise(a.exercise.id)}
-                          className="shrink-0 p-2 rounded-lg text-zinc-400 hover:bg-red-500/10 hover:text-red-400"
+                          className="shrink-0 p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                           title="Remove"
                         >
                           <Trash2 className="w-4 h-4" />

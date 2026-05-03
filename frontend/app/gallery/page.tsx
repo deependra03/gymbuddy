@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { galleryApi } from '@/lib/api';
-import { Image, Search, Play, X, ArrowLeft, Tag } from 'lucide-react';
+import { Image, Search, Play, X, ArrowLeft } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type GalleryItem = {
   id: string;
@@ -47,17 +48,20 @@ export default function PublicGalleryPage() {
   const exercises = items.filter((i) => i.type === 'exercise');
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Link href="/" className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <h1 className="font-black text-white text-lg leading-none">Gallery</h1>
-            <p className="text-xs text-zinc-500 mt-0.5">Recipes & exercise tutorials</p>
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/60">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/" className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="font-black text-zinc-900 dark:text-white text-lg leading-none">Gallery</h1>
+              <p className="text-xs text-zinc-500 mt-0.5">Recipes & exercise tutorials</p>
+            </div>
           </div>
+          <ThemeToggle />
         </div>
 
         {/* Search and filter */}
@@ -84,7 +88,7 @@ export default function PublicGalleryPage() {
                 className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                   filterType === value
                     ? 'bg-brand-500 text-white'
-                    : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    : 'bg-zinc-200 text-zinc-600 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                 }`}
               >
                 {label}
@@ -103,15 +107,15 @@ export default function PublicGalleryPage() {
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
-            <Image className="w-14 h-14 text-zinc-700 mx-auto mb-3" />
-            <p className="text-zinc-400">No items found</p>
+            <Image className="w-14 h-14 text-zinc-400 dark:text-zinc-700 mx-auto mb-3" />
+            <p className="text-zinc-600 dark:text-zinc-400">No items found</p>
           </div>
         ) : (
           <>
             {/* Recipes */}
             {(filterType === '' || filterType === 'recipe') && recipes.length > 0 && (
               <section>
-                <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <h2 className="text-sm font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-orange-400" />
                   Recipes ({recipes.length})
                 </h2>
@@ -130,7 +134,7 @@ export default function PublicGalleryPage() {
             {/* Exercise tutorials */}
             {(filterType === '' || filterType === 'exercise') && exercises.length > 0 && (
               <section>
-                <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <h2 className="text-sm font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-brand-500" />
                   Exercise Tutorials ({exercises.length})
                 </h2>
@@ -234,15 +238,15 @@ function GalleryCard({ item, onOpen }: { item: GalleryItem; onOpen: () => void }
 
   return (
     <div
-      className="card hover:border-zinc-700 transition-colors cursor-pointer group overflow-hidden"
+      className="card hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer group overflow-hidden"
       onClick={onOpen}
     >
-      <div className="relative -mx-5 -mt-5 mb-4 h-44 bg-zinc-800 rounded-t-2xl overflow-hidden">
+      <div className="relative -mx-5 -mt-5 mb-4 h-44 bg-zinc-200 dark:bg-zinc-800 rounded-t-2xl overflow-hidden">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Image className="w-10 h-10 text-zinc-700" />
+            <Image className="w-10 h-10 text-zinc-500 dark:text-zinc-700" />
           </div>
         )}
         {hasVideo && (
@@ -266,14 +270,14 @@ function GalleryCard({ item, onOpen }: { item: GalleryItem; onOpen: () => void }
         )}
       </div>
 
-      <h3 className="font-semibold text-zinc-100 text-sm mb-1 line-clamp-1">{item.title}</h3>
+      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm mb-1 line-clamp-1">{item.title}</h3>
       {item.description && (
         <p className="text-xs text-zinc-500 line-clamp-2 mb-3">{item.description}</p>
       )}
       {item.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {item.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-[10px] bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full">#{tag}</span>
+            <span key={tag} className="text-[10px] bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-500 px-2 py-0.5 rounded-full">#{tag}</span>
           ))}
         </div>
       )}

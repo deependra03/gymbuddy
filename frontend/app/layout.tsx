@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Toaster } from 'react-hot-toast';
+import '@fontsource-variable/google-sans';
 import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
+import { AppToaster } from '@/components/app-toaster';
 
 export const metadata: Metadata = {
   title: 'GymBuddy — Your Fitness Companion',
@@ -26,26 +28,18 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="bg-zinc-950 text-zinc-100 min-h-screen antialiased">
-        {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: '#18181b',
-              color: '#f4f4f5',
-              border: '1px solid #3f3f46',
-            },
-            success: { iconTheme: { primary: '#f97316', secondary: '#18181b' } },
-          }}
-        />
+      <body className="min-h-screen antialiased font-sans bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+        <ThemeProvider>
+          {children}
+          <AppToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

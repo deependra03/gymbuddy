@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
+const { getMembershipEntitlement } = require('../lib/planEntitlement');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -39,6 +40,7 @@ router.get('/', requireAdmin, async (req, res) => {
         joinDate: true,
         membershipStart: true,
         membershipEnd: true,
+        membershipDurationMonths: true,
         membershipPurchasePrice: true,
         _count: {
           select: {
@@ -80,6 +82,7 @@ router.get('/:id', async (req, res) => {
         joinDate: true,
         membershipStart: true,
         membershipEnd: true,
+        membershipDurationMonths: true,
         membershipPurchasePrice: true,
         assignedExercises: {
           include: {
@@ -94,7 +97,23 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!member) return res.status(404).json({ error: 'Member not found' });
-    res.json(member);
+
+    const planAccess = getMembershipEntitlement(member);
+    const isSelfMember = req.user.role === 'member' && req.user.id === member.id;
+
+    let assignedExercises = member.assignedExercises;
+    let dietPlans = member.dietPlans;
+    if (isSelfMember && (planAccess === 'upcoming' || planAccess === 'expired')) {
+      assignedExercises = [];
+      dietPlans = [];
+    }
+
+    res.json({
+      ...member,
+      assignedExercises,
+      dietPlans,
+      planAccess,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch member' });
   }
@@ -127,6 +146,7 @@ router.post(
       photoUrl,
       membershipStart,
       membershipEnd,
+      membershipDurationMonths,
       membershipPurchasePrice,
     } = req.body;
 
@@ -150,6 +170,17 @@ router.post(
           photoUrl: photoUrl || undefined,
           membershipStart: membershipStart ? new Date(membershipStart) : undefined,
           membershipEnd: membershipEnd ? new Date(membershipEnd) : undefined,
+          membershipDurationMonths: (() => {
+            if (
+              membershipDurationMonths === undefined ||
+              membershipDurationMonths === null ||
+              membershipDurationMonths === ''
+            ) {
+              return undefined;
+            }
+            const n = parseInt(membershipDurationMonths, 10);
+            return Number.isNaN(n) ? undefined : n;
+          })(),
           membershipPurchasePrice:
             membershipPurchasePrice !== undefined &&
             membershipPurchasePrice !== null &&
@@ -194,6 +225,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     password,
     membershipStart,
     membershipEnd,
+    membershipDurationMonths,
     membershipPurchasePrice,
   } = req.body;
 
@@ -220,6 +252,14 @@ router.put('/:id', requireAdmin, async (req, res) => {
           ? null
           : parseFloat(membershipPurchasePrice);
     }
+    if (membershipDurationMonths !== undefined) {
+      if (membershipDurationMonths === null || membershipDurationMonths === '') {
+        data.membershipDurationMonths = null;
+      } else {
+        const n = parseInt(membershipDurationMonths, 10);
+        data.membershipDurationMonths = Number.isNaN(n) ? null : n;
+      }
+    }
 
     const member = await prisma.user.update({
       where: { id: req.params.id },
@@ -237,6 +277,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
         isActive: true,
         membershipStart: true,
         membershipEnd: true,
+        membershipDurationMonths: true,
         membershipPurchasePrice: true,
       },
     });

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { exercisesApi } from '@/lib/api';
-import { Dumbbell, Play, X, ChevronRight, Filter } from 'lucide-react';
-import { getBadgeClass, getYouTubeEmbedUrl } from '@/lib/utils';
+import { exercisesApi, membersApi } from '@/lib/api';
+import { Dumbbell, Play, X } from 'lucide-react';
+import { formatDate, getBadgeClass, getYouTubeEmbedUrl, type PlanAccess } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 type Assignment = {
@@ -26,15 +26,21 @@ type Assignment = {
 export default function MemberExercisesPage() {
   const { user } = useAuthStore();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [planAccess, setPlanAccess] = useState<PlanAccess>('none');
+  const [planStart, setPlanStart] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeVideo, setActiveVideo] = useState<Assignment | null>(null);
   const [filterCategory, setFilterCategory] = useState('');
 
   useEffect(() => {
     if (!user) return;
-    exercisesApi
-      .forMember(user.id)
-      .then((r) => setAssignments(r.data))
+    setLoading(true);
+    Promise.all([exercisesApi.forMember(user.id), membersApi.get(user.id)])
+      .then(([exRes, meRes]) => {
+        setAssignments(exRes.data);
+        setPlanAccess(meRes.data.planAccess ?? 'none');
+        setPlanStart(meRes.data.membershipStart ?? null);
+      })
       .catch(() => toast.error('Failed to load exercises'))
       .finally(() => setLoading(false));
   }, [user]);
@@ -57,7 +63,11 @@ export default function MemberExercisesPage() {
         <h1 className="section-title flex items-center gap-2">
           <Dumbbell className="w-5 h-5 text-brand-500" /> My Exercises
         </h1>
-        <p className="text-zinc-500 text-sm">{assignments.length} exercises assigned by your trainer</p>
+        <p className="text-zinc-500 text-sm">
+          {planAccess === 'upcoming' || planAccess === 'expired'
+            ? 'Trainer assignments follow your membership dates'
+            : `${assignments.length} exercises assigned by your trainer`}
+        </p>
       </div>
 
       {/* Category filter pills */}
@@ -66,7 +76,7 @@ export default function MemberExercisesPage() {
           <button
             onClick={() => setFilterCategory('')}
             className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-              !filterCategory ? 'bg-brand-500 text-white' : 'bg-zinc-800 text-zinc-400'
+              !filterCategory ? 'bg-brand-500 text-white' : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
             }`}
           >
             All
@@ -76,7 +86,7 @@ export default function MemberExercisesPage() {
               key={cat}
               onClick={() => setFilterCategory(cat)}
               className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                filterCategory === cat ? 'bg-brand-500 text-white' : 'bg-zinc-800 text-zinc-400'
+                filterCategory === cat ? 'bg-brand-500 text-white' : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
               }`}
             >
               {cat}
@@ -94,9 +104,25 @@ export default function MemberExercisesPage() {
         </div>
       ) : assignments.length === 0 ? (
         <div className="card text-center py-16">
-          <Dumbbell className="w-14 h-14 text-zinc-700 mx-auto mb-3" />
-          <p className="text-zinc-300 font-semibold">No exercises assigned yet</p>
-          <p className="text-zinc-500 text-sm mt-1">Your trainer will assign exercises to your plan soon.</p>
+          <Dumbbell className="w-14 h-14 text-zinc-400 dark:text-zinc-700 mx-auto mb-3" />
+          {planAccess === 'upcoming' && planStart ? (
+            <>
+              <p className="text-zinc-700 dark:text-zinc-300 font-semibold">Your plan has not started</p>
+              <p className="text-zinc-500 text-sm mt-1">
+                Assigned workouts appear on {formatDate(planStart)}. Public exercises in the library stay available.
+              </p>
+            </>
+          ) : planAccess === 'expired' ? (
+            <>
+              <p className="text-zinc-700 dark:text-zinc-300 font-semibold">Membership plan ended</p>
+              <p className="text-zinc-500 text-sm mt-1">Renew at the gym to unlock trainer assignments again.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-zinc-700 dark:text-zinc-300 font-semibold">No exercises assigned yet</p>
+              <p className="text-zinc-500 text-sm mt-1">Your trainer will assign exercises to your plan soon.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -189,21 +215,21 @@ function ExerciseCard({
 }) {
   const ex = assignment.exercise;
   return (
-    <div className="card flex items-center gap-4 hover:border-zinc-700 transition-colors">
+    <div className="card flex items-center gap-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
       {/* Thumbnail */}
-      <div className="relative w-16 h-16 rounded-xl bg-zinc-800 overflow-hidden shrink-0">
+      <div className="relative w-16 h-16 rounded-xl bg-zinc-200 dark:bg-zinc-800 overflow-hidden shrink-0">
         {ex.thumbnailUrl ? (
           <img src={ex.thumbnailUrl} alt={ex.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Dumbbell className="w-6 h-6 text-zinc-600" />
+            <Dumbbell className="w-6 h-6 text-zinc-500 dark:text-zinc-600" />
           </div>
         )}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-zinc-100 text-sm truncate">{ex.title}</p>
+        <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate">{ex.title}</p>
         <p className="text-xs text-zinc-500 mt-0.5 truncate">{assignment.notes || ex.description || ex.focusArea}</p>
         <div className="flex gap-1.5 mt-1.5">
           <span className={getBadgeClass(ex.level)}>{ex.level}</span>
@@ -215,7 +241,7 @@ function ExerciseCard({
         onClick={onPlay}
         className="w-10 h-10 rounded-full bg-brand-500/10 hover:bg-brand-500/20 flex items-center justify-center shrink-0 transition-colors border border-brand-500/20"
       >
-        <Play className="w-4 h-4 text-brand-400" />
+        <Play className="w-4 h-4 text-brand-600 dark:text-brand-400" />
       </button>
     </div>
   );

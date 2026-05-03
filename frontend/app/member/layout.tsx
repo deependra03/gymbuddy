@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 import { Dumbbell, LayoutDashboard, ListChecks, UtensilsCrossed, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const navItems = [
   { href: '/member/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -38,28 +39,29 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Top bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60 h-14 flex items-center justify-between px-4">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/60 h-14 flex items-center justify-between px-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center">
             <Dumbbell className="w-4 h-4 text-white" />
           </div>
-          <span className="font-black text-white text-lg tracking-tight">GymBuddy</span>
+          <span className="font-black text-zinc-900 dark:text-white text-lg tracking-tight">GymBuddy</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-zinc-200">{user.name}</p>
+            <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{user.name}</p>
             <p className="text-[10px] text-zinc-500">Member</p>
           </div>
           {user.photoUrl ? (
-            <img src={user.photoUrl} className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-700" />
+            <img src={user.photoUrl} className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-300 dark:ring-zinc-700" />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400 text-xs font-bold">
               {user.name.slice(0, 2).toUpperCase()}
             </div>
           )}
-          <button onClick={handleLogout} className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors">
+          <button onClick={handleLogout} className="p-2 text-zinc-600 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -71,7 +73,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
       </main>
 
       {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 flex safe-area-inset-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 flex safe-area-inset-bottom">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
@@ -80,7 +82,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
               href={href}
               className={cn(
                 'flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-semibold transition-all duration-150',
-                active ? 'text-brand-400' : 'text-zinc-500 hover:text-zinc-300'
+                active ? 'text-brand-600 dark:text-brand-400' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
               )}
             >
               <div className={cn(

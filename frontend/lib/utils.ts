@@ -56,6 +56,26 @@ export function toDateInputValue(iso: string | Date | null | undefined): string 
   return `${y}-${m}-${day}`;
 }
 
+/** Inclusive plan end: start date + N calendar months, minus one day (local). */
+export function addMonthsToPlanEnd(startYmd: string, months: number): string {
+  const parts = startYmd.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return '';
+  const [y, mo, d] = parts;
+  const end = new Date(y, mo - 1 + months, d);
+  end.setDate(end.getDate() - 1);
+  return toDateInputValue(end);
+}
+
+export function formatMembershipDurationLabel(months: number | null | undefined): string | null {
+  if (months == null || Number.isNaN(months)) return null;
+  if (months === 24) return '2 years';
+  if (months === 12) return '12 months (1 year)';
+  if (months === 1) return '1 month';
+  return `${months} months`;
+}
+
+export type PlanAccess = 'none' | 'upcoming' | 'active' | 'expired';
+
 export function getBadgeClass(level: string): string {
   switch (level) {
     case 'beginner': return 'badge badge-beginner';

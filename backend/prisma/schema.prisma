@@ -37,6 +37,7 @@ model User {
   joinDate        DateTime  @default(now())
   membershipStart       DateTime?
   membershipEnd         DateTime?
+  membershipDurationMonths Int?
   membershipPurchasePrice Float?
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())

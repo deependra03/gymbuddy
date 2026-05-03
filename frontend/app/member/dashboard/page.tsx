@@ -8,7 +8,13 @@ import {
   Flame, Dumbbell, UtensilsCrossed, ChevronRight, Target, Scale,
   Ruler, Calendar, ListChecks, TrendingUp, CreditCard,
 } from 'lucide-react';
-import { formatCurrency, formatDate, getBadgeClass } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatDate,
+  formatMembershipDurationLabel,
+  getBadgeClass,
+  type PlanAccess,
+} from '@/lib/utils';
 
 export default function MemberDashboard() {
   const { user } = useAuthStore();
@@ -29,11 +35,7 @@ export default function MemberDashboard() {
 
   const assignedExercises = profile?.assignedExercises ?? [];
   const latestDiet = profile?.dietPlans?.[0] ?? null;
-  const membershipEnd = profile?.membershipEnd ? new Date(profile.membershipEnd) : null;
-  const membershipActive =
-    membershipEnd && !Number.isNaN(membershipEnd.getTime())
-      ? membershipEnd.getTime() >= new Date().setHours(0, 0, 0, 0)
-      : null;
+  const planAccess: PlanAccess = profile?.planAccess ?? 'none';
 
   const quickStats = [
     { label: 'Age', value: profile?.age ? `${profile.age} yrs` : '—', icon: Calendar },
@@ -66,29 +68,45 @@ export default function MemberDashboard() {
       {!loading &&
         (profile?.membershipStart ||
           profile?.membershipEnd ||
+          profile?.membershipDurationMonths != null ||
           profile?.membershipPurchasePrice != null) && (
           <div
             className={`rounded-2xl border p-4 ${
-              membershipActive === false
+              planAccess === 'expired'
                 ? 'border-amber-500/30 bg-amber-500/5'
-                : 'border-zinc-800 bg-zinc-900/50'
+                : planAccess === 'upcoming'
+                  ? 'border-sky-500/30 bg-sky-500/5'
+                  : 'border-zinc-200 bg-zinc-100/70 dark:border-zinc-800 dark:bg-zinc-900/50'
             }`}
           >
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5" /> Membership
+              <Calendar className="w-3.5 h-3.5" /> Membership plan
             </p>
-            <p className="text-sm text-zinc-200">
+            <p className="text-sm text-zinc-800 dark:text-zinc-200">
               {profile.membershipStart ? formatDate(profile.membershipStart) : '—'} —{' '}
               {profile.membershipEnd ? formatDate(profile.membershipEnd) : '—'}
             </p>
+            {formatMembershipDurationLabel(profile.membershipDurationMonths) && (
+              <p className="text-xs text-zinc-500 mt-1">
+                {formatMembershipDurationLabel(profile.membershipDurationMonths)}
+              </p>
+            )}
             {profile.membershipPurchasePrice != null && (
               <p className="text-sm text-brand-400 mt-1 flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5" />
                 {formatCurrency(profile.membershipPurchasePrice)}
               </p>
             )}
-            {membershipActive === false && (
-              <p className="text-xs text-amber-400 mt-2">Your membership period has ended. Contact the gym to renew.</p>
+            {planAccess === 'upcoming' && profile?.membershipStart && (
+              <p className="text-xs text-sky-300 mt-2">
+                Your plan has not started yet. Trainer-assigned workouts and diet unlock on{' '}
+                {formatDate(profile.membershipStart)}. You can still browse the public exercise library below.
+              </p>
+            )}
+            {planAccess === 'expired' && (
+              <p className="text-xs text-amber-400 mt-2">
+                This membership window has ended. Contact the gym to renew for full app access.
+              </p>
             )}
           </div>
         )}
@@ -105,11 +123,11 @@ export default function MemberDashboard() {
           {quickStats.map(({ label, value, icon: Icon }) => (
             <div key={label} className="card flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5 text-brand-400" />
+                <Icon className="w-5 h-5 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
                 <p className="text-xs text-zinc-500">{label}</p>
-                <p className="font-bold text-zinc-100">{value}</p>
+                <p className="font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
               </div>
             </div>
           ))}
@@ -119,10 +137,10 @@ export default function MemberDashboard() {
       {/* Today's Exercises */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-zinc-100 flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-brand-400" /> Your Workout
+          <h2 className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <Dumbbell className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Your Workout
           </h2>
-          <Link href="/member/exercises" className="text-xs text-brand-400 flex items-center gap-1">
+          <Link href="/member/exercises" className="text-xs text-brand-600 dark:text-brand-400 flex items-center gap-1">
             View all <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -133,9 +151,25 @@ export default function MemberDashboard() {
           </div>
         ) : assignedExercises.length === 0 ? (
           <div className="card text-center py-8">
-            <Dumbbell className="w-10 h-10 text-zinc-700 mx-auto mb-2" />
-            <p className="text-zinc-400 text-sm">No exercises assigned yet</p>
-            <p className="text-zinc-600 text-xs mt-1">Your trainer will assign exercises soon</p>
+            <Dumbbell className="w-10 h-10 text-zinc-400 dark:text-zinc-700 mx-auto mb-2" />
+            {planAccess === 'upcoming' && profile?.membershipStart ? (
+              <>
+                <p className="text-zinc-700 dark:text-zinc-300 text-sm font-medium">Workouts unlock with your plan</p>
+                <p className="text-zinc-500 text-xs mt-1">
+                  Assigned exercises appear on {formatDate(profile.membershipStart)}.
+                </p>
+              </>
+            ) : planAccess === 'expired' ? (
+              <>
+                <p className="text-zinc-700 dark:text-zinc-300 text-sm font-medium">Plan access ended</p>
+                <p className="text-zinc-500 text-xs mt-1">Renew to see trainer-assigned workouts again.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-zinc-600 dark:text-zinc-400 text-sm">No exercises assigned yet</p>
+                <p className="text-zinc-500 dark:text-zinc-600 text-xs mt-1">Your trainer will assign exercises soon</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -143,19 +177,19 @@ export default function MemberDashboard() {
               <Link
                 key={ae.id}
                 href="/member/exercises"
-                className="card flex items-center gap-4 hover:border-zinc-700 transition-colors"
+                className="card flex items-center gap-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
               >
-                <div className="w-12 h-12 rounded-xl bg-zinc-800 overflow-hidden shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-zinc-800 overflow-hidden shrink-0">
                   {ae.exercise.thumbnailUrl ? (
                     <img src={ae.exercise.thumbnailUrl} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Dumbbell className="w-5 h-5 text-zinc-600" />
+                      <Dumbbell className="w-5 h-5 text-zinc-500 dark:text-zinc-600" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-zinc-100 text-sm truncate">{ae.exercise.title}</p>
+                  <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate">{ae.exercise.title}</p>
                   <p className="text-xs text-zinc-500 truncate">{ae.notes || ae.exercise.focusArea}</p>
                 </div>
                 <span className={getBadgeClass(ae.exercise.level)}>{ae.exercise.level}</span>
@@ -164,7 +198,7 @@ export default function MemberDashboard() {
             {assignedExercises.length > 3 && (
               <Link
                 href="/member/exercises"
-                className="block text-center text-xs text-brand-400 py-2 hover:text-brand-300"
+                className="block text-center text-xs text-brand-600 dark:text-brand-400 py-2 hover:text-brand-500 dark:hover:text-brand-300"
               >
                 +{assignedExercises.length - 3} more exercises
               </Link>
@@ -176,10 +210,10 @@ export default function MemberDashboard() {
       {/* Diet Plan Preview */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-zinc-100 flex items-center gap-2">
-            <UtensilsCrossed className="w-4 h-4 text-brand-400" /> Diet Plan
+          <h2 className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Diet Plan
           </h2>
-          <Link href="/member/diet" className="text-xs text-brand-400 flex items-center gap-1">
+          <Link href="/member/diet" className="text-xs text-brand-600 dark:text-brand-400 flex items-center gap-1">
             View full <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -188,14 +222,26 @@ export default function MemberDashboard() {
           <div className="card h-28 animate-pulse" />
         ) : !latestDiet ? (
           <div className="card text-center py-8">
-            <UtensilsCrossed className="w-10 h-10 text-zinc-700 mx-auto mb-2" />
-            <p className="text-zinc-400 text-sm">No diet plan assigned yet</p>
+            <UtensilsCrossed className="w-10 h-10 text-zinc-400 dark:text-zinc-700 mx-auto mb-2" />
+            {planAccess === 'upcoming' && profile?.membershipStart ? (
+              <>
+                <p className="text-zinc-700 dark:text-zinc-300 text-sm font-medium">Diet plan unlocks with your membership</p>
+                <p className="text-zinc-500 text-xs mt-1">Available from {formatDate(profile.membershipStart)}.</p>
+              </>
+            ) : planAccess === 'expired' ? (
+              <>
+                <p className="text-zinc-700 dark:text-zinc-300 text-sm font-medium">Plan access ended</p>
+                <p className="text-zinc-500 text-xs mt-1">Renew to view your trainer diet plan.</p>
+              </>
+            ) : (
+              <p className="text-zinc-600 dark:text-zinc-400 text-sm">No diet plan assigned yet</p>
+            )}
           </div>
         ) : (
-          <Link href="/member/diet" className="card block hover:border-zinc-700 transition-colors">
+          <Link href="/member/diet" className="card block hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-semibold text-zinc-100">{latestDiet.title}</p>
+                <p className="font-semibold text-zinc-900 dark:text-zinc-100">{latestDiet.title}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">{formatDate(latestDiet.createdAt)}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
@@ -205,7 +251,7 @@ export default function MemberDashboard() {
                 const parsed = JSON.parse(latestDiet.content);
                 if (parsed.totalCalories) {
                   return (
-                    <div className="flex gap-4 mt-3 pt-3 border-t border-zinc-800">
+                    <div className="flex gap-4 mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
                       {[
                         { label: 'Calories', value: `${parsed.totalCalories} kcal` },
                         { label: 'Protein', value: parsed.protein || '—' },
@@ -213,7 +259,7 @@ export default function MemberDashboard() {
                       ].map(({ label, value }) => (
                         <div key={label}>
                           <p className="text-[10px] text-zinc-500">{label}</p>
-                          <p className="text-xs font-semibold text-brand-400">{value}</p>
+                          <p className="text-xs font-semibold text-brand-600 dark:text-brand-400">{value}</p>
                         </div>
                       ))}
                     </div>
@@ -228,29 +274,29 @@ export default function MemberDashboard() {
 
       {/* Quick Links */}
       <div>
-        <h2 className="font-bold text-zinc-100 mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-brand-400" /> Explore
+        <h2 className="font-bold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-brand-600 dark:text-brand-400" /> Explore
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <Link
             href="/exercises"
-            className="card flex flex-col items-center py-5 gap-2 hover:border-zinc-700 transition-colors text-center"
+            className="card flex flex-col items-center py-5 gap-2 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors text-center"
           >
             <div className="w-11 h-11 rounded-xl bg-brand-500/10 flex items-center justify-center">
-              <ListChecks className="w-5 h-5 text-brand-400" />
+              <ListChecks className="w-5 h-5 text-brand-600 dark:text-brand-400" />
             </div>
-            <span className="text-sm font-medium text-zinc-300">Exercise Library</span>
-            <span className="text-[10px] text-zinc-600">Browse all exercises</span>
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Exercise Library</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-600">Browse all exercises</span>
           </Link>
           <Link
             href="/gallery"
-            className="card flex flex-col items-center py-5 gap-2 hover:border-zinc-700 transition-colors text-center"
+            className="card flex flex-col items-center py-5 gap-2 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors text-center"
           >
             <div className="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <Flame className="w-5 h-5 text-orange-400" />
+              <Flame className="w-5 h-5 text-orange-500 dark:text-orange-400" />
             </div>
-            <span className="text-sm font-medium text-zinc-300">Diet Gallery</span>
-            <span className="text-[10px] text-zinc-600">Recipes & tips</span>
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Diet Gallery</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-600">Recipes & tips</span>
           </Link>
         </div>
       </div>

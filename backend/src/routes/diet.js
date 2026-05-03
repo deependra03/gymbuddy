@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { getMembershipEntitlement } = require('../lib/planEntitlement');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -11,6 +12,17 @@ router.get('/member/:memberId', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
   try {
+    if (req.user.role !== 'admin') {
+      const memberRow = await prisma.user.findUnique({
+        where: { id: req.params.memberId },
+        select: { membershipStart: true, membershipEnd: true },
+      });
+      const ent = getMembershipEntitlement(memberRow || {});
+      if (ent === 'upcoming' || ent === 'expired') {
+        return res.json([]);
+      }
+    }
+
     const plans = await prisma.dietPlan.findMany({
       where: { memberId: req.params.memberId },
       orderBy: { createdAt: 'desc' },
