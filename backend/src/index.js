@@ -4,11 +4,14 @@ const cors = require('cors');
 const path = require('path');
 
 const authRoutes = require('./routes/auth');
+const gymRoutes = require('./routes/gyms');
+const userRoutes = require('./routes/users');
 const memberRoutes = require('./routes/members');
 const exerciseRoutes = require('./routes/exercises');
 const dietRoutes = require('./routes/diet');
 const galleryRoutes = require('./routes/gallery');
 const uploadRoutes = require('./routes/upload');
+const sendRoutes = require('./routes/send');
 
 const app = express();
 
@@ -27,11 +30,14 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/gyms', gymRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/diet', dietRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/send', sendRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

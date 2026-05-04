@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { UtensilsCrossed, Plus, X, Edit3, Trash2, User, ChevronDown, ChevronUp } from 'lucide-react';
-import { membersApi, dietApi } from '@/lib/api';
+import { UtensilsCrossed, Plus, X, Edit3, Trash2, User, ChevronDown, ChevronUp, Download, MessageCircle } from 'lucide-react';
+import { membersApi, dietApi, sendApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
 type Member = { id: string; name: string; phone: string };
@@ -85,6 +85,33 @@ export default function AdminDietPlansPage() {
       fetchPlans(selectedMember!.id);
     } catch {
       toast.error('Failed to delete');
+    }
+  };
+
+  const handleDownloadPDF = async (planId: string, title: string) => {
+    try {
+      const res = await sendApi.dietPlanPDF(planId);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_')}_diet_plan.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('Failed to download PDF');
+    }
+  };
+
+  const handleSendWhatsApp = async (planId: string) => {
+    try {
+      await sendApi.dietPlanPDF(planId, 'whatsapp');
+      toast.success('Diet plan sent via WhatsApp');
+    } catch {
+      toast.error('Failed to send via WhatsApp');
     }
   };
 
@@ -190,6 +217,12 @@ export default function AdminDietPlansPage() {
                     <p className="text-xs text-zinc-500 mt-0.5">{formatDate(plan.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button onClick={() => handleDownloadPDF(plan.id, plan.title)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400" title="Download PDF">
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleSendWhatsApp(plan.id)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400" title="Send via WhatsApp">
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
                     <button onClick={() => openEdit(plan)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
                       <Edit3 className="w-4 h-4" />
                     </button>

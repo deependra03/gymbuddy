@@ -14,18 +14,27 @@ router.use(authenticate);
 router.get('/', requireAdmin, async (req, res) => {
   try {
     const { search, isActive } = req.query;
+    
+    // Build where clause
+    let whereClause = {
+      role: 'member',
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+      ...(isActive !== undefined && { isActive: isActive === 'true' }),
+    };
+
+    // If not super admin, scope to user's gym
+    if (req.user.role !== 'super_admin' && req.user.gymId) {
+      whereClause.gymId = req.user.gymId;
+    }
+
     const members = await prisma.user.findMany({
-      where: {
-        role: 'member',
-        ...(search && {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search } },
-            { email: { contains: search, mode: 'insensitive' } },
-          ],
-        }),
-        ...(isActive !== undefined && { isActive: isActive === 'true' }),
-      },
+      where: whereClause,
       select: {
         id: true,
         name: true,
@@ -148,6 +157,7 @@ router.post(
       membershipEnd,
       membershipDurationMonths,
       membershipPurchasePrice,
+      gymId,
     } = req.body;
 
     try {
@@ -156,6 +166,18 @@ router.post(
 
       const passwordHash = await bcrypt.hash(password, 12);
 
+      // Determine gym ID
+      let assignedGymId = gymId;
+      if (!assignedGymId) {
+        // If no gymId provided, use admin's gym (for regular admins)
+        if (req.user.role === 'admin' && req.user.gymId) {
+          assignedGymId = req.user.gymId;
+        } else if (req.user.role === 'super_admin') {
+          // Super admin must specify gymId
+          return res.status(400).json({ error: 'Gym ID is required for super admin' });
+        }
+      }
+
       const member = await prisma.user.create({
         data: {
           name,
@@ -163,6 +185,7 @@ router.post(
           email: email || undefined,
           passwordHash,
           role: 'member',
+          gymId: assignedGymId,
           age: age ? parseInt(age) : undefined,
           weight: weight ? parseFloat(weight) : undefined,
           height: height ? parseFloat(height) : undefined,

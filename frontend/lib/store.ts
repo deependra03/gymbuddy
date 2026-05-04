@@ -5,7 +5,7 @@ interface User {
   name: string;
   phone: string;
   email?: string;
-  role: 'admin' | 'member';
+  role: 'super_admin' | 'admin' | 'member';
   photoUrl?: string;
 }
 
@@ -24,9 +24,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   setAuth: (user, token) => {
+    console.log('setAuth called with:', user, token);
     if (typeof window !== 'undefined') {
       localStorage.setItem('gymbuddy_token', token);
       localStorage.setItem('gymbuddy_user', JSON.stringify(user));
+      console.log('Data saved to localStorage');
+      console.log('Token in localStorage:', localStorage.getItem('gymbuddy_token'));
+      console.log('User in localStorage:', localStorage.getItem('gymbuddy_user'));
     }
     set({ user, token, isLoading: false });
   },
@@ -40,17 +44,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initFromStorage: () => {
+    console.log('initFromStorage called');
     if (typeof window === 'undefined') return;
     const token = localStorage.getItem('gymbuddy_token');
     const userStr = localStorage.getItem('gymbuddy_user');
+    console.log('localStorage token:', token);
+    console.log('localStorage user:', userStr);
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
+        console.log('Parsed user from localStorage:', user);
         set({ user, token, isLoading: false });
-      } catch {
+      } catch (err) {
+        console.error('Error parsing user from localStorage:', err);
         set({ isLoading: false });
       }
     } else {
+      console.log('No token or user found in localStorage');
       set({ isLoading: false });
     }
   },

@@ -12,6 +12,7 @@ datasource db {
 }
 
 enum Role {
+  super_admin
   admin
   member
 }
@@ -20,6 +21,25 @@ enum Level {
   beginner
   intermediate
   advanced
+}
+
+model Gym {
+  id                String    @id @default(cuid())
+  name              String
+  logoUrl           String?
+  description       String?
+  address           String?
+  phone             String?
+  email             String?
+  maxMembers        Int       @default(100)
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  users             User[]
+
+  @@map("gyms")
 }
 
 model User {
@@ -44,6 +64,8 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   // Relations
+  gymId           String?
+  gym             Gym?      @relation(fields: [gymId], references: [id], onDelete: SetNull)
   assignedExercises MemberExercise[]
   dietPlans         DietPlan[]
 

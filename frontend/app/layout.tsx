@@ -3,6 +3,7 @@ import '@fontsource-variable/google-sans';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AppToaster } from '@/components/app-toaster';
+import { AuthProvider } from '@/components/auth-provider';
 
 export const metadata: Metadata = {
   title: 'GymBuddy — Your Fitness Companion',
@@ -36,10 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-screen antialiased font-sans bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <ThemeProvider>
-          {children}
-          <AppToaster />
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+            <AppToaster />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

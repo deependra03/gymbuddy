@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
 const { getMembershipEntitlement } = require('../lib/planEntitlement');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { longCache } = require('../lib/cache');
 
 const router = express.Router();
 
@@ -10,6 +11,19 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const { category, level, focusArea, search } = req.query;
+
+    // Create cache key based on query parameters
+    const cacheKey = `exercises:list:${JSON.stringify({ category, level, focusArea, search })}`;
+    
+    // Check cache first
+    const cachedData = longCache.get(cacheKey);
+
+    if (cachedData) {
+      console.log('Cache HIT: exercises:list');
+      return res.json(cachedData);
+    }
+    
+    console.log('Cache MISS: exercises:list');
 
     const exercises = await prisma.exercise.findMany({
       where: {
@@ -27,6 +41,9 @@ router.get('/', async (req, res) => {
       },
       orderBy: [{ category: 'asc' }, { title: 'asc' }],
     });
+
+    // Cache the result
+    longCache.set(cacheKey, exercises);
 
     res.json(exercises);
   } catch (err) {
@@ -79,6 +96,10 @@ router.post(
           isPublic: isPublic !== false,
         },
       });
+
+      // Invalidate cache
+      longCache.deletePattern('exercises:list:*');
+
       res.status(201).json(exercise);
     } catch (err) {
       res.status(500).json({ error: 'Failed to create exercise' });
@@ -104,6 +125,10 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
         ...(isPublic !== undefined && { isPublic }),
       },
     });
+
+    // Invalidate cache
+    longCache.deletePattern('exercises:list:*');
+
     res.json(exercise);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update exercise' });
@@ -114,6 +139,10 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await prisma.exercise.delete({ where: { id: req.params.id } });
+
+    // Invalidate cache
+    longCache.deletePattern('exercises:list:*');
+
     res.json({ message: 'Exercise deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete exercise' });

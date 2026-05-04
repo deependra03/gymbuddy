@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { ListChecks, Plus, Search, X, Edit3, Trash2, Play, Filter, Upload } from 'lucide-react';
-import { exercisesApi, uploadApi } from '@/lib/api';
+import { ListChecks, Plus, Search, X, Edit3, Trash2, Play, Filter, Upload, Download, MessageCircle } from 'lucide-react';
+import { exercisesApi, uploadApi, sendApi } from '@/lib/api';
 import { cn, getBadgeClass, EXERCISE_CATEGORIES, FOCUS_AREAS, LEVELS } from '@/lib/utils';
 
 type Exercise = {
@@ -91,9 +91,40 @@ export default function AdminExercisesPage() {
     }
   };
 
+  const handleDownloadPDF = async (exerciseId: string, title: string) => {
+    try {
+      const res = await sendApi.exercisePDF(exerciseId);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('Failed to download PDF');
+    }
+  };
+
+  const handleSendWhatsApp = async (exerciseId: string) => {
+    const memberId = prompt('Enter Member ID to send via WhatsApp:');
+    if (!memberId) return;
+
+    try {
+      await sendApi.exercisePDF(exerciseId, memberId, 'whatsapp');
+      toast.success('Exercise sent via WhatsApp');
+    } catch {
+      toast.error('Failed to send via WhatsApp');
+    }
+  };
+
   const handleThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setUploadingThumb(true);
     try {
       const res = await uploadApi.image(file, 'exercises');
@@ -212,6 +243,12 @@ export default function AdminExercisesPage() {
                     </div>
 
                     <div className="flex gap-2">
+                      <button onClick={() => handleDownloadPDF(ex.id, ex.title)} className="btn-secondary text-xs py-2" title="Download PDF">
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => handleSendWhatsApp(ex.id)} className="btn-secondary text-xs py-2" title="Send via WhatsApp">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={() => openEdit(ex)} className="flex-1 btn-secondary text-xs py-2">
                         <Edit3 className="w-3.5 h-3.5" /> Edit
                       </button>

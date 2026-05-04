@@ -34,18 +34,25 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Super admin access required' });
+  }
+  next();
+};
+
 const requireAdmin = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
+  if (!['super_admin', 'admin'].includes(req.user?.role)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 };
 
 const requireMember = (req, res, next) => {
-  if (!['admin', 'member'].includes(req.user?.role)) {
+  if (!['super_admin', 'admin', 'member'].includes(req.user?.role)) {
     return res.status(403).json({ error: 'Member access required' });
   }
   next();
 };
 
-module.exports = { authenticate, requireAdmin, requireMember };
+module.exports = { authenticate, requireSuperAdmin, requireAdmin, requireMember };

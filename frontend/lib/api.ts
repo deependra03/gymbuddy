@@ -69,6 +69,22 @@ export const dietApi = {
   delete: (id: string) => api.delete(`/diet/${id}`),
 };
 
+// Gyms (Super Admin only)
+export const gymsApi = {
+  list: () => api.get('/gyms'),
+  get: (id: string) => api.get(`/gyms/${id}`),
+  create: (data: any) => api.post('/gyms', data),
+  update: (id: string, data: any) => api.put(`/gyms/${id}`, data),
+  delete: (id: string) => api.delete(`/gyms/${id}`),
+  getStats: (id: string) => api.get(`/gyms/${id}/stats`),
+};
+
+// Users (Super Admin only)
+export const usersApi = {
+  list: (params?: { search?: string; isActive?: boolean; role?: string; gymId?: string }) => api.get('/users', { params }),
+  get: (id: string) => api.get(`/users/${id}`),
+};
+
 // Gallery
 export const galleryApi = {
   list: (params?: { type?: string; search?: string }) => api.get('/gallery', { params }),
@@ -94,5 +110,24 @@ export const uploadApi = {
     const fd = new FormData();
     fd.append('file', file);
     return api.post('/upload/ocr', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// Send (PDF/WhatsApp)
+export const sendApi = {
+  exercisePDF: (exerciseId: string, memberId?: string, sendVia: 'download' | 'whatsapp' = 'download') => {
+    return api.post(`/send/exercise/${exerciseId}/pdf`, { memberId, sendVia }, {
+      responseType: sendVia === 'download' ? 'blob' : 'json',
+    });
+  },
+  dietPlanPDF: (dietPlanId: string, sendVia: 'download' | 'whatsapp' = 'download') => {
+    return api.post(`/send/diet-plan/${dietPlanId}/pdf`, { sendVia }, {
+      responseType: sendVia === 'download' ? 'blob' : 'json',
+    });
+  },
+  memberExercisesPDF: (memberId: string, sendVia: 'download' | 'whatsapp' = 'download') => {
+    return api.post(`/send/member/${memberId}/exercises-pdf`, { sendVia }, {
+      responseType: sendVia === 'download' ? 'blob' : 'json',
+    });
   },
 };

@@ -31,18 +31,36 @@ export default function LoginPage() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
+      console.log('Attempting login with:', data.phone);
       const res = await authApi.login(data);
+      console.log('Login API response:', res.data);
       const { token, user } = res.data;
+      
+      console.log('Setting auth with user:', user);
       setAuth(user, token);
+      
       toast.success(`Welcome back, ${user.name}! 💪`);
-      if (user.role === 'admin') {
-        router.replace('/admin/members');
-      } else {
-        router.replace('/member/dashboard');
-      }
+      console.log('User role is:', user.role);
+      
+      // Immediate redirect using Next.js router
+      setTimeout(() => {
+        console.log('Executing redirect logic...');
+        if (user.role === 'super_admin') {
+          console.log('Redirecting to /super-admin');
+          router.push('/super-admin');
+        } else if (user.role === 'admin') {
+          console.log('Redirecting to /admin/members');
+          router.push('/admin/members');
+        } else {
+          console.log('Redirecting to /member/dashboard');
+          router.push('/member/dashboard');
+        }
+        setLoading(false);
+      }, 1000);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Login failed');
-    } finally {
+      console.error('Login failed with error:', err);
+      console.error('Error response:', err.response?.data);
+      toast.error(err.response?.data?.error || err.message || 'Login failed');
       setLoading(false);
     }
   };
@@ -124,7 +142,8 @@ export default function LoginPage() {
         <div className="mt-6 p-4 rounded-xl bg-zinc-100/80 border border-zinc-200 dark:bg-zinc-900/50 dark:border-zinc-800 space-y-2">
           <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-500 uppercase tracking-wider">Demo credentials</p>
           <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
-            <p>🔑 Admin: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9999999999</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">admin123</span></p>
+            <p>� Super Admin: <span className="text-zinc-900 dark:text-zinc-200 font-mono">1111111111</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">super123</span></p>
+            <p>�🔑 Admin: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9999999999</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">admin123</span></p>
             <p>🏃 Member: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9876543210</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">member123</span></p>
           </div>
         </div>
