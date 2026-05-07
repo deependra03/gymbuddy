@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { trainingSessionsApi, membersApi } from '@/lib/api';
+import { trainingSessionsApi, membersApi, trainersApi } from '@/lib/api';
 import { Calendar, Clock, DollarSign, Plus, Filter, Play, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function TrainingSessionsPage() {
@@ -15,7 +15,7 @@ export default function TrainingSessionsPage() {
   const [formData, setFormData] = useState({
     trainerId: '',
     memberId: '',
-    sessionType: 'session_based',
+    sessionType: 'session_based' as 'session_based' | 'month_based',
     scheduledDate: new Date().toISOString().split('T')[0],
     startTime: '',
     endTime: '',
@@ -50,7 +50,7 @@ export default function TrainingSessionsPage() {
 
   const fetchTrainers = async () => {
     try {
-      const res = await membersApi.list({ isActive: true, role: 'trainer' });
+      const res = await trainersApi.list({ isActive: true });
       setTrainers(res.data);
     } catch (err) {
       console.error(err);
@@ -59,7 +59,7 @@ export default function TrainingSessionsPage() {
 
   const fetchMembers = async () => {
     try {
-      const res = await membersApi.list({ isActive: true, role: 'member' });
+      const res = await membersApi.list({ isActive: true });
       setMembers(res.data);
     } catch (err) {
       console.error(err);
