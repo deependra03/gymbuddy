@@ -58,10 +58,19 @@ export default function TrainersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const data = {
+        ...formData,
+        baseSalary: formData.baseSalary ? Number(formData.baseSalary) : undefined,
+        sessionRate: formData.sessionRate ? Number(formData.sessionRate) : undefined,
+        age: formData.age ? Number(formData.age) : undefined,
+        weight: formData.weight ? Number(formData.weight) : undefined,
+        height: formData.height ? Number(formData.height) : undefined,
+      };
+
       if (editingTrainer) {
-        await trainersApi.update(editingTrainer.id, formData);
+        await trainersApi.update(editingTrainer.id, data);
       } else {
-        await trainersApi.create(formData);
+        await trainersApi.create(data);
       }
       setShowForm(false);
       setEditingTrainer(null);
