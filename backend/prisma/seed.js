@@ -40,6 +40,62 @@ async function main() {
   });
   console.log('✅ Member created:', member.phone);
 
+  // Create gym admin
+  const gymAdminHash = await bcrypt.hash('gymadmin123', 12);
+  const gymAdmin = await prisma.user.upsert({
+    where: { phone: '9888776655' },
+    update: {},
+    create: {
+      name: 'Gym Manager',
+      phone: '9888776655',
+      email: 'manager@gymbuddy.app',
+      passwordHash: gymAdminHash,
+      role: 'gym_admin',
+    },
+  });
+  console.log('✅ Gym Admin created:', gymAdmin.phone);
+
+  // Create trainers
+  const trainer1Hash = await bcrypt.hash('trainer123', 12);
+  const trainer1 = await prisma.user.upsert({
+    where: { phone: '9123456780' },
+    update: {},
+    create: {
+      name: 'Vikram Singh',
+      phone: '9123456780',
+      email: 'vikram@gymbuddy.app',
+      passwordHash: trainer1Hash,
+      role: 'trainer',
+      age: 32,
+      goal: 'Help members achieve their fitness goals',
+      baseSalary: 25000,
+      sessionRate: 500,
+      specialization: 'Strength & Conditioning',
+      bio: 'Certified personal trainer with 8 years of experience in strength training and body transformation.',
+    },
+  });
+  console.log('✅ Trainer 1 created:', trainer1.phone);
+
+  const trainer2Hash = await bcrypt.hash('trainer456', 12);
+  const trainer2 = await prisma.user.upsert({
+    where: { phone: '9234567890' },
+    update: {},
+    create: {
+      name: 'Priya Patel',
+      phone: '9234567890',
+      email: 'priya@gymbuddy.app',
+      passwordHash: trainer2Hash,
+      role: 'trainer',
+      age: 28,
+      goal: 'Specialize in strength and conditioning',
+      baseSalary: 22000,
+      sessionRate: 450,
+      specialization: 'Yoga & Flexibility',
+      bio: 'Yoga instructor and flexibility specialist with 5 years of experience helping members improve mobility and reduce stress.',
+    },
+  });
+  console.log('✅ Trainer 2 created:', trainer2.phone);
+
   // Create exercises
   const exercises = await Promise.all([
     prisma.exercise.upsert({
@@ -225,8 +281,66 @@ async function main() {
   });
   console.log('✅ Gallery items created');
 
+  // Create sample training sessions
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  await prisma.trainingSession.createMany({
+    data: [
+      {
+        trainerId: trainer1.id,
+        memberId: member.id,
+        sessionType: 'session_based',
+        scheduledDate: yesterday,
+        startTime: new Date(yesterday.setHours(9, 0, 0, 0)),
+        endTime: new Date(yesterday.setHours(10, 0, 0, 0)),
+        durationMinutes: 60,
+        status: 'completed',
+        sessionRate: 500,
+        amountPaid: 500,
+        paymentStatus: 'paid',
+        completedAt: yesterday,
+      },
+      {
+        trainerId: trainer2.id,
+        memberId: member.id,
+        sessionType: 'session_based',
+        scheduledDate: today,
+        startTime: new Date(today.setHours(14, 0, 0, 0)),
+        endTime: new Date(today.setHours(15, 0, 0, 0)),
+        durationMinutes: 60,
+        status: 'in_progress',
+        sessionRate: 500,
+        amountPaid: 0,
+        paymentStatus: 'pending',
+      },
+      {
+        trainerId: trainer1.id,
+        memberId: member.id,
+        sessionType: 'session_based',
+        scheduledDate: tomorrow,
+        startTime: new Date(tomorrow.setHours(10, 0, 0, 0)),
+        endTime: new Date(tomorrow.setHours(11, 30, 0, 0)),
+        durationMinutes: 90,
+        status: 'scheduled',
+        sessionRate: 750,
+        amountPaid: 0,
+        paymentStatus: 'pending',
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('✅ Training sessions created');
+
   console.log('\n🎉 Seed complete!');
   console.log('Admin login: phone=9999999999, password=admin123');
+  console.log('Gym Admin login: phone=9888776655, password=gymadmin123');
+  console.log('Trainer 1 login: phone=9123456780, password=trainer123');
+  console.log('Trainer 2 login: phone=9234567890, password=trainer456');
   console.log('Member login: phone=9876543210, password=member123');
 }
 

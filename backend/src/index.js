@@ -9,6 +9,11 @@ const exerciseRoutes = require('./routes/exercises');
 const dietRoutes = require('./routes/diet');
 const galleryRoutes = require('./routes/gallery');
 const uploadRoutes = require('./routes/upload');
+const attendanceRoutes = require('./routes/attendance');
+const payrollRoutes = require('./routes/payroll');
+const trainingSessionsRoutes = require('./routes/training-sessions');
+const trainersRoutes = require('./routes/trainers');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -32,6 +37,11 @@ app.use('/api/exercises', exerciseRoutes);
 app.use('/api/diet', dietRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/training-sessions', trainingSessionsRoutes);
+app.use('/api/payroll', payrollRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/trainers', trainersRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

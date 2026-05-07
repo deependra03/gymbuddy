@@ -125,7 +125,10 @@ export default function LoginPage() {
           <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-500 uppercase tracking-wider">Demo credentials</p>
           <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
             <p>🔑 Admin: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9999999999</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">admin123</span></p>
-            <p>🏃 Member: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9876543210</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">member123</span></p>
+            <p>� Gym Admin: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9888776655</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">gymadmin123</span></p>
+            <p>💪 Trainer 1: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9123456780</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">trainer123</span></p>
+            <p>💪 Trainer 2: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9234567890</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">trainer456</span></p>
+            <p>�🏃 Member: <span className="text-zinc-900 dark:text-zinc-200 font-mono">9876543210</span> / <span className="text-zinc-900 dark:text-zinc-200 font-mono">member123</span></p>
           </div>
         </div>
       </div>

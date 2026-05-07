@@ -13,10 +13,10 @@ router.use(authenticate);
 // GET /api/members - List all members (admin only)
 router.get('/', requireAdmin, async (req, res) => {
   try {
-    const { search, isActive } = req.query;
+    const { search, isActive, role } = req.query;
     const members = await prisma.user.findMany({
       where: {
-        role: 'member',
+        ...(role ? { role } : { role: 'member' }),
         ...(search && {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
@@ -32,6 +32,7 @@ router.get('/', requireAdmin, async (req, res) => {
         phone: true,
         email: true,
         photoUrl: true,
+        role: true,
         age: true,
         weight: true,
         height: true,
