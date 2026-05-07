@@ -1,37 +1,53 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 import {
-  Dumbbell, Users, ListChecks, UtensilsCrossed, Image, LogOut, ChevronRight,
+  Dumbbell, Users, ListChecks, UtensilsCrossed, Image, LogOut, ChevronRight, Fingerprint, DollarSign, Calendar, Award, MoreVertical, X, Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-toggle';
+import NotificationsPanel from '@/components/shared/NotificationsPanel';
 
-const navItems = [
+const mainNavItems = [
   { href: '/admin/members', label: 'Members', icon: Users },
+  { href: '/admin/trainers', label: 'Trainers', icon: Award },
+  { href: '/admin/attendance', label: 'Attendance', icon: Fingerprint },
+  { href: '/admin/payroll', label: 'Payroll', icon: DollarSign },
+  { href: '/admin/training-sessions', label: 'Sessions', icon: Calendar },
+  { href: '/admin/notifications', label: 'Notifications', icon: Bell },
+];
+
+const moreNavItems = [
   { href: '/admin/exercises', label: 'Exercises', icon: ListChecks },
   { href: '/admin/diet-plans', label: 'Diet Plans', icon: UtensilsCrossed },
   { href: '/admin/gallery', label: 'Gallery', icon: Image },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout, isLoading, initFromStorage } = useAuthStore();
+  const { user, logout, initFromStorage, isLoading } = useAuthStore();
+  const redirectRef = useRef(false);
 
   useEffect(() => {
     initFromStorage();
   }, []);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) router.replace('/auth/login');
-      else if (user.role !== 'admin') router.replace('/member/dashboard');
+    if (!isLoading && !redirectRef.current) {
+      if (!user) {
+        redirectRef.current = true;
+        router.replace('/auth/login');
+      } else if (user.role !== 'admin' && user.role !== 'gym_admin' && user.role !== 'super_admin') {
+        redirectRef.current = true;
+        router.replace('/member/dashboard');
+      }
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, router]);
 
   if (isLoading || !user) return null;
 
@@ -59,7 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {[...mainNavItems, ...moreNavItems].map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href);
             return (
               <Link
@@ -84,6 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
           <div className="flex items-center gap-2 px-1">
             <ThemeToggle />
+            <NotificationsPanel />
             <span className="text-xs text-zinc-500 dark:text-zinc-500">Theme</span>
           </div>
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
@@ -92,7 +109,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{user.name}</p>
-              <p className="text-xs text-zinc-500">Administrator</p>
+              <p className="text-xs text-zinc-500 capitalize">{user.role.replace('_', ' ')}</p>
             </div>
           </div>
           <button
@@ -123,7 +140,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {mainNavItems.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (
             <Link
@@ -139,7 +156,52 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           );
         })}
+        <button
+          onClick={() => setShowMoreMenu(true)}
+          className={cn(
+            'flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-medium transition-colors',
+            moreNavItems.some(item => pathname.startsWith(item.href)) ? 'text-brand-600 dark:text-brand-400' : 'text-zinc-500'
+          )}
+        >
+          <MoreVertical className={cn('w-5 h-5', moreNavItems.some(item => pathname.startsWith(item.href)) && 'text-brand-600 dark:text-brand-400')} />
+          More
+        </button>
       </nav>
+
+      {/* Mobile more menu */}
+      {showMoreMenu && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex items-end">
+          <div className="bg-white dark:bg-zinc-900 w-full rounded-t-3xl max-h-[70vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-zinc-900 px-4 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">More Options</h3>
+              <button onClick={() => setShowMoreMenu(false)} className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2">
+              {moreNavItems.map(({ href, label, icon: Icon }) => {
+                const active = pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setShowMoreMenu(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+                      active
+                        ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400'
+                        : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="flex-1 lg:ml-64 min-h-screen">

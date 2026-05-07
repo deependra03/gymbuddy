@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from './store';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -7,7 +8,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach token from localStorage
+// Attach token from localStorage (more reliable during hydration)
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('gymbuddy_token');
@@ -16,14 +17,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 → redirect to login
+// Handle 401 → clear auth
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('gymbuddy_token');
-      localStorage.removeItem('gymbuddy_user');
-      window.location.href = '/auth/login';
+      useAuthStore.getState().logout();
     }
     return Promise.reject(err);
   }
@@ -95,4 +94,96 @@ export const uploadApi = {
     fd.append('file', file);
     return api.post('/upload/ocr', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+};
+
+// Attendance
+export const attendanceApi = {
+  list: (params?: { userId?: string; startDate?: string; endDate?: string; method?: string }) =>
+    api.get('/attendance', { params }),
+  today: () => api.get('/attendance/today'),
+  punchIn: (data?: { method?: string; biometricData?: string; deviceInfo?: string; location?: string; notes?: string }) =>
+    api.post('/attendance/punch-in', data),
+  punchOut: () => api.post('/attendance/punch-out'),
+  biometric: (data: { biometricData: string; action: 'punch-in' | 'punch-out'; deviceInfo?: string; location?: string }) =>
+    api.post('/attendance/biometric', data),
+  stats: (params?: { startDate?: string; endDate?: string }) => api.get('/attendance/stats', { params }),
+};
+
+// Payroll
+export const payrollApi = {
+  list: (params?: { userId?: string; status?: string; startDate?: string; endDate?: string; gymId?: string }) =>
+    api.get('/payroll', { params }),
+  get: (id: string) => api.get(`/payroll/${id}`),
+  create: (data: {
+    userId: string;
+    baseSalary: number;
+    bonus?: number;
+    deductions?: number;
+    paymentDate: string;
+    paymentMethod?: string;
+    paymentReference?: string;
+    notes?: string;
+    periodStart: string;
+    periodEnd: string;
+  }) => api.post('/payroll', data),
+  update: (id: string, data: any) => api.put(`/payroll/${id}`, data),
+  delete: (id: string) => api.delete(`/payroll/${id}`),
+  markPaid: (id: string, data: { paymentMethod?: string; paymentReference?: string }) =>
+    api.post(`/payroll/${id}/mark-paid`, data),
+  stats: (params?: { startDate?: string; endDate?: string; gymId?: string }) => api.get('/payroll/stats', { params }),
+};
+
+// Training Sessions
+export const trainingSessionsApi = {
+  list: (params?: { trainerId?: string; memberId?: string; status?: string; sessionType?: string; startDate?: string; endDate?: string }) =>
+    api.get('/training-sessions', { params }),
+  get: (id: string) => api.get(`/training-sessions/${id}`),
+  create: (data: {
+    trainerId: string;
+    memberId: string;
+    sessionType: 'session_based' | 'month_based';
+    scheduledDate: string;
+    startTime: string;
+    endTime?: string;
+    sessionRate: number;
+    notes?: string;
+  }) => api.post('/training-sessions', data),
+  update: (id: string, data: any) => api.put(`/training-sessions/${id}`, data),
+  delete: (id: string) => api.delete(`/training-sessions/${id}`),
+  start: (id: string) => api.post(`/training-sessions/${id}/start`),
+  complete: (id: string) => api.post(`/training-sessions/${id}/complete`),
+  stats: (params?: { trainerId?: string; startDate?: string; endDate?: string }) => api.get('/training-sessions/stats', { params }),
+};
+
+// Trainers
+export const trainersApi = {
+  list: (params?: { isActive?: boolean }) => api.get('/trainers', { params }),
+  get: (id: string) => api.get(`/trainers/${id}`),
+  create: (data: {
+    name: string;
+    phone: string;
+    email?: string;
+    password: string;
+    baseSalary?: number;
+    sessionRate?: number;
+    specialization?: string;
+    bio?: string;
+    age?: number;
+    weight?: number;
+    height?: number;
+    goal?: string;
+  }) => api.post('/trainers', data),
+  update: (id: string, data: any) => api.put(`/trainers/${id}`, data),
+  delete: (id: string) => api.delete(`/trainers/${id}`),
+  stats: () => api.get('/trainers/stats'),
+};
+
+// Notifications
+export const notificationsApi = {
+  list: async () => api.get('/notifications'),
+  unreadCount: async () => api.get('/notifications/unread-count'),
+  markAsRead: async (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: async () => api.patch('/notifications/mark-all-read'),
+  delete: async (id: string) => api.delete(`/notifications/${id}`),
+  send: async (data: any) => api.post('/notifications/send', data),
 };

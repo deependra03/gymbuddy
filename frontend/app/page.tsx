@@ -17,7 +17,7 @@ export default function HomePage() {
     if (!isLoading) {
       if (!user) {
         router.replace('/auth/login');
-      } else if (user.role === 'admin') {
+      } else if (user.role === 'admin' || user.role === 'gym_admin' || user.role === 'super_admin') {
         router.replace('/admin/members');
       } else {
         router.replace('/member/dashboard');

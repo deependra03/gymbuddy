@@ -5,7 +5,7 @@ interface User {
   name: string;
   phone: string;
   email?: string;
-  role: 'admin' | 'member';
+  role: 'super_admin' | 'admin' | 'gym_admin' | 'trainer' | 'member';
   photoUrl?: string;
 }
 
@@ -41,6 +41,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initFromStorage: () => {
     if (typeof window === 'undefined') return;
+    const state = useAuthStore.getState();
+    // Only init from storage if store is empty (avoid overwriting fresh auth)
+    if (state.user && state.token) {
+      set({ isLoading: false });
+      return;
+    }
+
     const token = localStorage.getItem('gymbuddy_token');
     const userStr = localStorage.getItem('gymbuddy_user');
     if (token && userStr) {
@@ -48,10 +55,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         const user = JSON.parse(userStr);
         set({ user, token, isLoading: false });
       } catch {
-        set({ isLoading: false });
+        set({ user: null, token: null, isLoading: false });
       }
     } else {
-      set({ isLoading: false });
+      set({ user: null, token: null, isLoading: false });
     }
   },
 }));

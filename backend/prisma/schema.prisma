@@ -12,7 +12,10 @@ datasource db {
 }
 
 enum Role {
+  super_admin
   admin
+  gym_admin
+  trainer
   member
 }
 
@@ -20,6 +23,28 @@ enum Level {
   beginner
   intermediate
   advanced
+}
+
+model Gym {
+  id                String    @id @default(cuid())
+  name              String
+  logoUrl           String?
+  description       String?
+  address           String?
+  phone             String?
+  email             String?
+  maxMembers        Int       @default(100)
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  users             User[]
+  attendance        Attendance[]
+  payroll           Payroll[]
+  trainingSessions  TrainingSession[]
+
+  @@map("gyms")
 }
 
 model User {
@@ -40,12 +65,25 @@ model User {
   membershipDurationMonths Int?
   membershipPurchasePrice Float?
   isActive        Boolean   @default(true)
+  // Trainer-specific fields
+  baseSalary      Float?    // Base monthly salary for trainers
+  sessionRate     Float?    // Rate per training session
+  specialization  String?   // Trainer specialization (e.g., "Strength", "Cardio", "Yoga")
+  bio             String?   // Trainer bio/description
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   // Relations
+  gymId           String?
+  gym             Gym?      @relation(fields: [gymId], references: [id], onDelete: SetNull)
   assignedExercises MemberExercise[]
   dietPlans         DietPlan[]
+  payroll           Payroll[]
+  attendance        Attendance[]
+  trainerSessions   TrainingSession[] @relation("TrainerSessions")
+  memberSessions    TrainingSession[] @relation("MemberSessions")
+  notifications     Notification[]
+  sentNotifications Notification[] @relation("SentNotifications")
 
   @@map("users")
 }
@@ -88,6 +126,7 @@ model DietPlan {
   memberId  String
   title     String
   content   String   // Rich text / JSON structured meals
+  pdfUrl    String?  // PDF document for diet plan
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -110,4 +149,111 @@ model GalleryItem {
   updatedAt   DateTime @updatedAt
 
   @@map("gallery_items")
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  userId        String
+  gymId         String?
+  punchInTime   DateTime
+  punchOutTime  DateTime?
+  durationMinutes Int?
+  method        String   @default("manual") // "manual" | "biometric" | "qr"
+  biometricData String?  // Fingerprint or face data hash
+  deviceInfo    String?  // Device identifier
+  location      String?  // GPS coordinates
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym  Gym? @relation(fields: [gymId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([gymId])
+  @@index([punchInTime])
+  @@map("attendance")
+}
+
+model Payroll {
+  id              String   @id @default(cuid())
+  userId          String
+  gymId           String?
+  baseSalary      Float
+  bonus           Float    @default(0)
+  deductions      Float    @default(0)
+  totalAmount     Float
+  paymentDate     DateTime
+  status          String   @default("pending") // "pending" | "paid" | "cancelled"
+  paymentMethod   String?  // "cash" | "bank_transfer" | "upi" | "card"
+  paymentReference String? // Transaction ID or reference
+  notes           String?
+  periodStart     DateTime // Pay period start date
+  periodEnd       DateTime // Pay period end date
+  hoursWorked     Float?   // Total hours worked in the period
+  overtimeHours   Float?   @default(0)
+  overtimeRate    Float?   @default(1.5) // Multiplier for overtime
+  sessionEarnings Float?   @default(0) // Earnings from training sessions
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym  Gym? @relation(fields: [gymId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([gymId])
+  @@index([paymentDate])
+  @@index([status])
+  @@map("payroll")
+}
+
+model TrainingSession {
+  id              String   @id @default(cuid())
+  trainerId       String
+  memberId        String
+  gymId           String?
+  sessionType     String   // "session_based" | "month_based"
+  scheduledDate   DateTime
+  startTime       DateTime
+  endTime         DateTime?
+  durationMinutes Int?
+  status          String   @default("scheduled") // "scheduled" | "in_progress" | "completed" | "cancelled" | "no_show"
+  sessionRate     Float    // Rate per session or monthly rate
+  amountPaid      Float?   @default(0)
+  paymentStatus   String   @default("pending") // "pending" | "paid" | "refunded"
+  notes           String?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  trainer User @relation("TrainerSessions", fields: [trainerId], references: [id], onDelete: Cascade)
+  member  User @relation("MemberSessions", fields: [memberId], references: [id], onDelete: Cascade)
+  gym     Gym? @relation(fields: [gymId], references: [id], onDelete: SetNull)
+
+  @@index([trainerId])
+  @@index([memberId])
+  @@index([gymId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("training_sessions")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        String   @default("info") // "info" | "success" | "warning" | "error" | "reminder"
+  isRead      Boolean  @default(false)
+  actionUrl   String?  // Optional URL to navigate to when clicked
+  sentBy      String?  // User ID who sent the notification (null for system notifications)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender User? @relation("SentNotifications", fields: [sentBy], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }
