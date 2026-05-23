@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { isMatch, findBestMatch, parseDescriptor } = require('../lib/faceMatch');
 
 const router = express.Router();
 
@@ -91,7 +92,7 @@ router.get('/today', async (req, res) => {
 router.post(
   '/punch-in',
   [
-    body('method').optional().isIn(['manual', 'biometric', 'qr']),
+    body('method').optional().isIn(['manual', 'biometric', 'qr', 'face']),
     body('biometricData').optional().isString(),
     body('deviceInfo').optional().isString(),
     body('location').optional().isString(),
@@ -350,6 +351,224 @@ router.post(
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Failed to process biometric attendance' });
+    }
+  }
+);
+
+async function punchInUser(userId, { deviceInfo, location, biometricData } = {}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const existingAttendance = await prisma.attendance.findFirst({
+    where: {
+      userId,
+      punchInTime: { gte: today, lt: tomorrow },
+      punchOutTime: null,
+    },
+  });
+
+  if (existingAttendance) {
+    return { error: 'Already punched in today. Please punch out first.', status: 400 };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { gymId: true },
+  });
+
+  const attendance = await prisma.attendance.create({
+    data: {
+      userId,
+      gymId: user?.gymId,
+      punchInTime: new Date(),
+      method: 'face',
+      biometricData,
+      deviceInfo,
+      location,
+    },
+    include: {
+      user: { select: { id: true, name: true, phone: true, photoUrl: true } },
+      gym: { select: { id: true, name: true } },
+    },
+  });
+
+  return { attendance, status: 201 };
+}
+
+async function punchOutUser(userId, { deviceInfo, location, biometricData } = {}) {
+  const attendance = await prisma.attendance.findFirst({
+    where: { userId, punchOutTime: null },
+    orderBy: { punchInTime: 'desc' },
+  });
+
+  if (!attendance) {
+    return { error: 'No active punch-in found. Please punch in first.', status: 400 };
+  }
+
+  const punchOutTime = new Date();
+  const durationMinutes = Math.floor(
+    (punchOutTime - new Date(attendance.punchInTime)) / (1000 * 60)
+  );
+
+  const updatedAttendance = await prisma.attendance.update({
+    where: { id: attendance.id },
+    data: {
+      punchOutTime,
+      durationMinutes,
+      biometricData,
+      deviceInfo,
+      location,
+    },
+    include: {
+      user: { select: { id: true, name: true, phone: true, photoUrl: true } },
+      gym: { select: { id: true, name: true } },
+    },
+  });
+
+  return { attendance: updatedAttendance, status: 200 };
+}
+
+// POST /api/attendance/face - Face recognition punch in/out (logged-in member)
+router.post(
+  '/face',
+  [
+    body('descriptor').isArray().withMessage('Face descriptor is required'),
+    body('action').isIn(['punch-in', 'punch-out']).withMessage('Action must be punch-in or punch-out'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { descriptor, action, deviceInfo, location } = req.body;
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { faceDescriptor: true },
+      });
+
+      if (!user?.faceDescriptor) {
+        return res.status(400).json({
+          error: 'Face not enrolled. Please enroll your face in Profile first.',
+        });
+      }
+
+      if (!isMatch(descriptor, user.faceDescriptor)) {
+        return res.status(403).json({ error: 'Face not recognized. Please try again.' });
+      }
+
+      const biometricData = JSON.stringify(parseDescriptor(descriptor));
+
+      if (action === 'punch-in') {
+        const result = await punchInUser(req.user.id, { deviceInfo, location, biometricData });
+        if (result.error) return res.status(result.status).json({ error: result.error });
+        return res.status(result.status).json(result.attendance);
+      }
+
+      const result = await punchOutUser(req.user.id, { deviceInfo, location, biometricData });
+      if (result.error) return res.status(result.status).json({ error: result.error });
+      return res.json(result.attendance);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to process face attendance' });
+    }
+  }
+);
+
+// POST /api/attendance/face-kiosk - Admin gym kiosk: identify member by face
+router.post(
+  '/face-kiosk',
+  requireAttendanceAccess,
+  [body('descriptor').isArray().withMessage('Face descriptor is required')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { descriptor, deviceInfo, location } = req.body;
+
+    try {
+      const admin = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { gymId: true },
+      });
+
+      const members = await prisma.user.findMany({
+        where: {
+          role: 'member',
+          isActive: true,
+          faceDescriptor: { not: null },
+          ...(admin?.gymId && { gymId: admin.gymId }),
+        },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          photoUrl: true,
+          faceDescriptor: true,
+        },
+      });
+
+      if (members.length === 0) {
+        return res.status(404).json({ error: 'No members with enrolled faces found' });
+      }
+
+      const match = findBestMatch(descriptor, members);
+      if (!match) {
+        return res.status(403).json({ error: 'Face not recognized. Member may need to enroll first.' });
+      }
+      if (match.ambiguous) {
+        return res.status(409).json({ error: 'Multiple similar matches. Please try again or use manual check-in.' });
+      }
+
+      const memberId = match.user.id;
+      const biometricData = JSON.stringify(parseDescriptor(descriptor));
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const activeToday = await prisma.attendance.findFirst({
+        where: {
+          userId: memberId,
+          punchInTime: { gte: today, lt: tomorrow },
+          punchOutTime: null,
+        },
+      });
+
+      let result;
+      let action;
+      if (activeToday) {
+        action = 'punch-out';
+        result = await punchOutUser(memberId, { deviceInfo, location, biometricData });
+      } else {
+        action = 'punch-in';
+        result = await punchInUser(memberId, { deviceInfo, location, biometricData });
+      }
+
+      if (result.error) {
+        return res.status(result.status).json({ error: result.error });
+      }
+
+      return res.status(result.status).json({
+        action,
+        matchedMember: {
+          id: match.user.id,
+          name: match.user.name,
+          phone: match.user.phone,
+          photoUrl: match.user.photoUrl,
+        },
+        attendance: result.attendance,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to process kiosk face attendance' });
     }
   }
 );

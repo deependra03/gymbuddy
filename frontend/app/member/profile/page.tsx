@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { membersApi } from '@/lib/api';
+import { membersApi, faceApi } from '@/lib/api';
+import FaceScanner from '@/components/attendance/FaceScanner';
 import {
   User, Phone, Mail, Scale, Ruler, Calendar, Target,
-  LogOut, ChevronRight, Dumbbell, UtensilsCrossed, CreditCard,
+  LogOut, ChevronRight, Dumbbell, UtensilsCrossed, CreditCard, ScanFace,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatMembershipDurationLabel, getInitials } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -17,6 +18,8 @@ export default function MemberProfilePage() {
   const { user, logout } = useAuthStore();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [faceScannerOpen, setFaceScannerOpen] = useState(false);
+  const [faceEnrolling, setFaceEnrolling] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -30,6 +33,31 @@ export default function MemberProfilePage() {
   const handleLogout = () => {
     logout();
     router.replace('/auth/login');
+  };
+
+  const handleFaceEnroll = async (descriptor: number[]) => {
+    setFaceScannerOpen(false);
+    setFaceEnrolling(true);
+    try {
+      await faceApi.enroll(descriptor);
+      setProfile((p: any) => (p ? { ...p, faceEnrolled: true } : p));
+      toast.success('Face enrolled successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to enroll face');
+    } finally {
+      setFaceEnrolling(false);
+    }
+  };
+
+  const handleRemoveFace = async () => {
+    if (!confirm('Remove your enrolled face? You will need to enroll again for face check-in.')) return;
+    try {
+      await faceApi.remove();
+      setProfile((p: any) => (p ? { ...p, faceEnrolled: false } : p));
+      toast.success('Face enrollment removed');
+    } catch {
+      toast.error('Failed to remove face enrollment');
+    }
   };
 
   const infoRows = profile
@@ -154,6 +182,54 @@ export default function MemberProfilePage() {
           ))}
         </div>
       )}
+
+      {/* Face enrollment */}
+      {!loading && (
+        <div className="card">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center shrink-0">
+              <ScanFace className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Face Recognition</p>
+              <p className="text-xs text-zinc-500 mt-1">
+                {profile?.faceEnrolled
+                  ? 'Your face is enrolled for attendance check-in.'
+                  : 'Enroll your face to use face recognition on the Attendance page.'}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setFaceScannerOpen(true)}
+                  disabled={faceEnrolling}
+                  className="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {profile?.faceEnrolled ? 'Re-enroll Face' : 'Enroll Face'}
+                </button>
+                {profile?.faceEnrolled && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveFace}
+                    className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <FaceScanner
+        open={faceScannerOpen}
+        mode="enroll"
+        title="Enroll Your Face"
+        subtitle="Capture 3 samples for better accuracy"
+        samplesRequired={3}
+        onCapture={handleFaceEnroll}
+        onClose={() => setFaceScannerOpen(false)}
+      />
 
       {/* Quick actions */}
       <div className="space-y-2">

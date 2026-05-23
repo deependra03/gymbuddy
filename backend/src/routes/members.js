@@ -94,6 +94,7 @@ router.get('/:id', async (req, res) => {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
+        faceDescriptor: true,
       },
     });
 
@@ -109,8 +110,10 @@ router.get('/:id', async (req, res) => {
       dietPlans = [];
     }
 
+    const { faceDescriptor, ...memberWithoutFace } = member;
     res.json({
-      ...member,
+      ...memberWithoutFace,
+      faceEnrolled: Boolean(faceDescriptor),
       assignedExercises,
       dietPlans,
       planAccess,

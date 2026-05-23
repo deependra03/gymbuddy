@@ -14,6 +14,7 @@ const payrollRoutes = require('./routes/payroll');
 const trainingSessionsRoutes = require('./routes/training-sessions');
 const trainersRoutes = require('./routes/trainers');
 const notificationRoutes = require('./routes/notifications');
+const faceRoutes = require('./routes/face');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/diet', dietRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/face', faceRoutes);
 app.use('/api/training-sessions', trainingSessionsRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/notifications', notificationRoutes);

@@ -17,12 +17,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 → clear auth
+// Handle 401 → clear auth (only for invalid/expired session, not face mismatch)
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
-      useAuthStore.getState().logout();
+      const url = err.config?.url ?? '';
+      const skipLogout =
+        url.includes('/attendance/face') ||
+        url.includes('/attendance/face-kiosk');
+      if (!skipLogout) {
+        useAuthStore.getState().logout();
+      }
     }
     return Promise.reject(err);
   }
@@ -106,7 +112,18 @@ export const attendanceApi = {
   punchOut: () => api.post('/attendance/punch-out'),
   biometric: (data: { biometricData: string; action: 'punch-in' | 'punch-out'; deviceInfo?: string; location?: string }) =>
     api.post('/attendance/biometric', data),
+  face: (data: { descriptor: number[]; action: 'punch-in' | 'punch-out'; deviceInfo?: string; location?: string }) =>
+    api.post('/attendance/face', data),
+  faceKiosk: (data: { descriptor: number[]; deviceInfo?: string; location?: string }) =>
+    api.post('/attendance/face-kiosk', data),
   stats: (params?: { startDate?: string; endDate?: string }) => api.get('/attendance/stats', { params }),
+};
+
+// Face enrollment
+export const faceApi = {
+  status: () => api.get<{ enrolled: boolean }>('/face/status'),
+  enroll: (descriptor: number[]) => api.post('/face/enroll', { descriptor }),
+  remove: () => api.delete('/face/enroll'),
 };
 
 // Payroll

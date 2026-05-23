@@ -24,6 +24,7 @@ Thumbs.db
 
 # Prisma generated
 backend/node_modules/
+backend/generated/
 
 # Build outputs
 dist/

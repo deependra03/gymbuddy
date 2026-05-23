@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -70,6 +71,7 @@ model User {
   sessionRate     Float?    // Rate per training session
   specialization  String?   // Trainer specialization (e.g., "Strength", "Cardio", "Yoga")
   bio             String?   // Trainer bio/description
+  faceDescriptor  String?   // JSON array of 128-dim face embedding for recognition
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -158,7 +160,7 @@ model Attendance {
   punchInTime   DateTime
   punchOutTime  DateTime?
   durationMinutes Int?
-  method        String   @default("manual") // "manual" | "biometric" | "qr"
+  method        String   @default("manual") // "manual" | "biometric" | "face" | "qr"
   biometricData String?  // Fingerprint or face data hash
   deviceInfo    String?  // Device identifier
   location      String?  // GPS coordinates
