@@ -44,6 +44,7 @@ model Gym {
   attendance        Attendance[]
   payroll           Payroll[]
   trainingSessions  TrainingSession[]
+  invoices          Invoice[]
 
   @@map("gyms")
 }
@@ -86,6 +87,7 @@ model User {
   memberSessions    TrainingSession[] @relation("MemberSessions")
   notifications     Notification[]
   sentNotifications Notification[] @relation("SentNotifications")
+  invoices          Invoice[]
 
   @@map("users")
 }
@@ -196,17 +198,50 @@ model Payroll {
   overtimeHours   Float?   @default(0)
   overtimeRate    Float?   @default(1.5) // Multiplier for overtime
   sessionEarnings Float?   @default(0) // Earnings from training sessions
+  proRataDays     Float?   // Number of days worked for pro-rata calculation
+  proRataMonths   Float?   // Number of months for pro-rata calculation
+  isProRata       Boolean  @default(false) // Whether this is a pro-rata payment
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gym  Gym? @relation(fields: [gymId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym      Gym?      @relation(fields: [gymId], references: [id], onDelete: SetNull)
+  invoice  Invoice?
 
   @@index([userId])
   @@index([gymId])
   @@index([paymentDate])
   @@index([status])
   @@map("payroll")
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  payrollId       String   @unique
+  invoiceNumber   String   @unique
+  userId          String
+  gymId           String?
+  amount          Float
+  status          String   @default("pending") // "pending" | "paid" | "cancelled"
+  issueDate       DateTime @default(now())
+  dueDate         DateTime?
+  paidDate        DateTime?
+  paymentMethod   String?
+  paymentReference String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym      Gym?    @relation(fields: [gymId], references: [id], onDelete: SetNull)
+
+  @@index([payrollId])
+  @@index([userId])
+  @@index([gymId])
+  @@index([invoiceNumber])
+  @@index([status])
+  @@map("invoices")
 }
 
 model TrainingSession {

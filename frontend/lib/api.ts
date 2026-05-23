@@ -130,10 +130,13 @@ export const faceApi = {
 export const payrollApi = {
   list: (params?: { userId?: string; status?: string; startDate?: string; endDate?: string; gymId?: string }) =>
     api.get('/payroll', { params }),
+  employees: () => api.get('/payroll/employees'),
+  preview: (params: { userId: string; periodStart: string; periodEnd: string; useProRata?: string }) =>
+    api.get('/payroll/preview', { params }),
   get: (id: string) => api.get(`/payroll/${id}`),
   create: (data: {
     userId: string;
-    baseSalary: number;
+    baseSalary?: number;
     bonus?: number;
     deductions?: number;
     paymentDate: string;
@@ -142,11 +145,17 @@ export const payrollApi = {
     notes?: string;
     periodStart: string;
     periodEnd: string;
+    useProRata?: boolean;
+    generateInvoice?: boolean;
   }) => api.post('/payroll', data),
   update: (id: string, data: any) => api.put(`/payroll/${id}`, data),
   delete: (id: string) => api.delete(`/payroll/${id}`),
   markPaid: (id: string, data: { paymentMethod?: string; paymentReference?: string }) =>
     api.post(`/payroll/${id}/mark-paid`, data),
+  generateInvoice: (id: string) => api.post(`/payroll/${id}/generate-invoice`),
+  getInvoice: (id: string) => api.get(`/payroll/${id}/invoice`),
+  downloadInvoicePDF: (id: string) => api.get(`/payroll/${id}/invoice/pdf`, { responseType: 'blob' }),
+  downloadSalarySlipPDF: (id: string) => api.get(`/payroll/${id}/salary-slip/pdf`, { responseType: 'blob' }),
   stats: (params?: { startDate?: string; endDate?: string; gymId?: string }) => api.get('/payroll/stats', { params }),
 };
 
