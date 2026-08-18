@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "db:test": "node scripts/test-db.js",
     "postinstall": "prisma generate",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "process:attendance": "node scripts/process-attendance-logs.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

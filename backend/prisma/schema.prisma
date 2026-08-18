@@ -73,6 +73,7 @@ model User {
   specialization  String?   // Trainer specialization (e.g., "Strength", "Cardio", "Yoga")
   bio             String?   // Trainer bio/description
   faceDescriptor  String?   // JSON array of 128-dim face embedding for recognition
+  esslEnrollNumber Int?     @unique // ESSL biometric device employee/enroll code
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -162,8 +163,9 @@ model Attendance {
   punchInTime   DateTime
   punchOutTime  DateTime?
   durationMinutes Int?
-  method        String   @default("manual") // "manual" | "biometric" | "face" | "qr"
+  method        String   @default("manual") // "manual" | "biometric" | "face" | "qr" | "essl"
   biometricData String?  // Fingerprint or face data hash
+  externalLogId String?  @unique // ESSL device log id for idempotent sync
   deviceInfo    String?  // Device identifier
   location      String?  // GPS coordinates
   notes         String?
@@ -293,4 +295,46 @@ model Notification {
   @@index([isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model EsslSyncState {
+  id         String    @id @default("default")
+  lastSyncAt DateTime?
+  updatedAt  DateTime  @updatedAt
+
+  @@map("essl_sync_state")
+}
+
+model AttendanceLog {
+  id                String   @id @default(cuid())
+  sourceLogId       String   @unique // ESSL DeviceLogId or external source ID
+  sourceTable       String   // ESSL table name (e.g., DeviceLogs_6_2026)
+  userId            String?  // ESSL UserId
+  esslEnrollNumber  Int?     // ESSL employee code in device
+  logDate           DateTime
+  direction         String?
+  attDirection      String?
+  deviceId          Float?
+  workCode          String?
+  isApproved        Boolean?
+  downloadDate      DateTime?
+  createdDate       DateTime?
+  lastModifiedDate  DateTime?
+  longitude         Float?
+  latitude          Float?
+  locationAddress   String?
+  bodyTemperature   Float?
+  isMaskOn          Boolean?
+  rawJson           Json     // Full raw data from ESSL
+  isProcessed       Boolean  @default(false)
+  processedAt       DateTime?
+  error             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([sourceLogId])
+  @@index([isProcessed])
+  @@index([logDate])
+  @@index([esslEnrollNumber])
+  @@map("attendance_logs")
 }

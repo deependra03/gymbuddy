@@ -29,16 +29,24 @@ router.post(
     const { phone, password } = req.body;
 
     try {
+      console.log('Login attempt with phone:', phone);
+      console.log('Password received:', password);
+      console.log('Password length:', password.length);
       const user = await prisma.user.findUnique({ where: { phone } });
       if (!user) {
+        console.log('User not found for phone:', phone);
         return res.status(401).json({ error: 'Invalid phone number or password' });
       }
+      console.log('User found:', user.name, user.phone);
 
       if (!user.isActive) {
+        console.log('User account is deactivated:', user.name);
         return res.status(401).json({ error: 'Account is deactivated. Contact admin.' });
       }
 
+      console.log('Checking password for user:', user.name);
       const valid = await bcrypt.compare(password, user.passwordHash);
+      console.log('Password valid:', valid);
       if (!valid) {
         return res.status(401).json({ error: 'Invalid phone number or password' });
       }

@@ -43,6 +43,7 @@ router.get('/', requireAdmin, async (req, res) => {
         membershipEnd: true,
         membershipDurationMonths: true,
         membershipPurchasePrice: true,
+        esslEnrollNumber: true,
         _count: {
           select: {
             assignedExercises: true,
@@ -85,6 +86,7 @@ router.get('/:id', async (req, res) => {
         membershipEnd: true,
         membershipDurationMonths: true,
         membershipPurchasePrice: true,
+        esslEnrollNumber: true,
         assignedExercises: {
           include: {
             exercise: true,
@@ -231,6 +233,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     membershipEnd,
     membershipDurationMonths,
     membershipPurchasePrice,
+    esslEnrollNumber,
   } = req.body;
 
   try {
@@ -264,6 +267,25 @@ router.put('/:id', requireAdmin, async (req, res) => {
         data.membershipDurationMonths = Number.isNaN(n) ? null : n;
       }
     }
+    if (esslEnrollNumber !== undefined) {
+      if (esslEnrollNumber === null || esslEnrollNumber === '') {
+        data.esslEnrollNumber = null;
+      } else {
+        const n = parseInt(esslEnrollNumber, 10);
+        if (Number.isNaN(n)) {
+          return res.status(400).json({ error: 'Invalid ESSL enroll number' });
+        }
+        const conflict = await prisma.user.findFirst({
+          where: { esslEnrollNumber: n, NOT: { id: req.params.id } },
+        });
+        if (conflict) {
+          return res.status(409).json({
+            error: `ESSL enroll number ${n} is already assigned to ${conflict.name}`,
+          });
+        }
+        data.esslEnrollNumber = n;
+      }
+    }
 
     const member = await prisma.user.update({
       where: { id: req.params.id },
@@ -283,6 +305,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
         membershipEnd: true,
         membershipDurationMonths: true,
         membershipPurchasePrice: true,
+        esslEnrollNumber: true,
       },
     });
 

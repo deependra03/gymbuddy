@@ -92,7 +92,7 @@ router.get('/today', async (req, res) => {
 router.post(
   '/punch-in',
   [
-    body('method').optional().isIn(['manual', 'biometric', 'qr', 'face']),
+    body('method').optional().isIn(['manual', 'biometric', 'qr', 'face', 'essl']),
     body('biometricData').optional().isString(),
     body('deviceInfo').optional().isString(),
     body('location').optional().isString(),

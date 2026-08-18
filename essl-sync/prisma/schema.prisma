@@ -1,0 +1,98 @@
+// This is your Prisma schema file for ESSL sync
+// datasource: PostgreSQL via Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  super_admin
+  admin
+  gym_admin
+  trainer
+  member
+}
+
+// Minimal schema for processing attendance logs
+// This references the tables created by the main GymBuddy backend
+
+model AttendanceLog {
+  id                String   @id @default(cuid())
+  sourceLogId       String   @unique
+  sourceTable       String
+  userId            String?
+  esslEnrollNumber  Int?
+  logDate           DateTime
+  direction         String?
+  attDirection      String?
+  deviceId          Float?
+  workCode          String?
+  isApproved        Boolean?
+  downloadDate      DateTime?
+  createdDate       DateTime?
+  lastModifiedDate  DateTime?
+  longitude         Float?
+  latitude          Float?
+  locationAddress   String?
+  bodyTemperature   Float?
+  isMaskOn          Boolean?
+  rawJson           Json
+  isProcessed       Boolean  @default(false)
+  processedAt       DateTime?
+  error             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("attendance_logs")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  name              String
+  phone             String   @unique
+  email             String?  @unique
+  passwordHash      String
+  role              Role     @default(member)
+  esslEnrollNumber  Int?     @unique
+  isActive          Boolean  @default(true)
+  gymId             String?
+  membershipStart   DateTime?
+  membershipEnd     DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  userId        String
+  gymId         String?
+  punchInTime   DateTime
+  punchOutTime  DateTime?
+  durationMinutes Int?
+  method        String   @default("manual")
+  externalLogId String?  @unique
+  deviceInfo    String?
+  location      String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("attendance")
+}
+
+model Gym {
+  id          String   @id @default(cuid())
+  name        String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("gyms")
+}

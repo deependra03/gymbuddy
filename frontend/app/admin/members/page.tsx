@@ -34,6 +34,7 @@ type Member = {
   membershipEnd?: string | null;
   membershipDurationMonths?: number | null;
   membershipPurchasePrice?: number | null;
+  esslEnrollNumber?: number | null;
   _count?: { assignedExercises: number; dietPlans: number };
 };
 
@@ -113,6 +114,7 @@ export default function AdminMembersPage() {
         m.membershipDurationMonths != null ? String(m.membershipDurationMonths) : '',
       membershipPurchasePrice:
         m.membershipPurchasePrice != null ? String(m.membershipPurchasePrice) : '',
+      esslEnrollNumber: m.esslEnrollNumber != null ? String(m.esslEnrollNumber) : '',
     });
     setShowModal(true);
   };
@@ -198,6 +200,7 @@ export default function AdminMembersPage() {
           membershipEnd: data.membershipEnd || null,
           membershipDurationMonths,
           membershipPurchasePrice: membershipPurchase,
+          esslEnrollNumber: data.esslEnrollNumber || null,
         });
         toast.success('Member updated');
       } else {
@@ -343,6 +346,11 @@ export default function AdminMembersPage() {
                     <p className="text-xs text-zinc-500 flex items-center gap-1">
                       <Phone className="w-3 h-3" /> {member.phone}
                     </p>
+                    {member.esslEnrollNumber != null && (
+                      <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">
+                        ESSL #{member.esslEnrollNumber}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <span className={cn('badge', member.isActive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-500')}>
@@ -559,6 +567,21 @@ export default function AdminMembersPage() {
                     step="0.01"
                   />
                 </div>
+                {editingMember && (
+                  <div className="col-span-2">
+                    <label className="label">ESSL device enroll number</label>
+                    <input
+                      {...register('esslEnrollNumber')}
+                      className="input-field"
+                      placeholder="e.g. 101 (from biometric device)"
+                      type="number"
+                      min={1}
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Must match the employee code on your ESSL biometric device for punch sync.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">

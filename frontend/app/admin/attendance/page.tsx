@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/lib/store';
-import { attendanceApi } from '@/lib/api';
+import { attendanceApi, esslApi } from '@/lib/api';
 import FaceAutoKiosk, { MEMBER_COOLDOWN_MS } from '@/components/attendance/FaceAutoKiosk';
 import Link from 'next/link';
-import { Calendar, Clock, Fingerprint, Filter, Download, ScanFace } from 'lucide-react';
+import { Calendar, Clock, Fingerprint, Filter, Download, ScanFace, RefreshCw, Users, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ADMIN_ROLES = ['admin', 'gym_admin', 'super_admin'];
@@ -21,12 +21,18 @@ export default function AdminAttendancePage() {
     method: '',
   });
   const [kioskActive, setKioskActive] = useState(false);
+  const [esslStatus, setEsslStatus] = useState<any>(null);
+  const [esslSyncing, setEsslSyncing] = useState(false);
+  const [esslUserSyncing, setEsslUserSyncing] = useState(false);
+  const [esslUserData, setEsslUserData] = useState<any>(null);
+  const [showEsslMapping, setShowEsslMapping] = useState(false);
   const cooldownRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (user && ADMIN_ROLES.includes(user.role)) {
       fetchAttendance();
       fetchStats();
+      fetchEsslStatus();
     }
   }, [user, filters]);
 
@@ -47,6 +53,67 @@ export default function AdminAttendancePage() {
       setStats(res.data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchEsslStatus = async () => {
+    try {
+      const res = await esslApi.status();
+      setEsslStatus(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEsslSync = async () => {
+    setEsslSyncing(true);
+    try {
+      const res = await esslApi.sync();
+      const { logsFetched, processed, punchIn, punchOut, skipped } = res.data;
+      toast.success(
+        `Synced ${processed} punches (${punchIn} in, ${punchOut} out) from ${logsFetched} device logs`
+      );
+      if (skipped > 0) {
+        toast(`${skipped} logs skipped (unmapped users or duplicates)`, { icon: 'ℹ️' });
+      }
+      fetchAttendance();
+      fetchStats();
+      fetchEsslStatus();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'ESSL sync failed');
+    } finally {
+      setEsslSyncing(false);
+    }
+  };
+
+  const handleEsslUserSync = async () => {
+    setEsslUserSyncing(true);
+    try {
+      const res = await esslApi.syncUsers();
+      setEsslUserData(res.data);
+      setShowEsslMapping(true);
+      toast.success(`Found ${res.data.esslTotal} ESSL users, ${res.data.mappedCount} already mapped`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to fetch ESSL users');
+    } finally {
+      setEsslUserSyncing(false);
+    }
+  };
+
+  const applySuggestedMappings = async () => {
+    if (!esslUserData?.suggestions?.length) return;
+    try {
+      const mappings = esslUserData.suggestions.map((s: any) => ({
+        memberId: s.suggestedMember.id,
+        esslEnrollNumber: s.essl.employeeCode,
+      }));
+      const res = await esslApi.mapUsers(mappings);
+      const mapped = res.data.results.filter((r: any) => r.status === 'mapped').length;
+      toast.success(`Mapped ${mapped} members to ESSL enroll numbers`);
+      setShowEsslMapping(false);
+      fetchEsslStatus();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to apply mappings');
     }
   };
 
@@ -81,6 +148,7 @@ export default function AdminAttendancePage() {
     const styles: Record<string, string> = {
       manual: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400',
       biometric: 'bg-brand-500/10 text-brand-600 dark:text-brand-400',
+      essl: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
       face: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
       qr: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
     };
@@ -158,7 +226,7 @@ export default function AdminAttendancePage() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Attendance</h1>
           <p className="text-sm text-zinc-500 mt-1">
-            Auto face kiosk marks check-in/out when members approach the camera
+            Face kiosk and ESSL biometric device punch in/out
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -183,6 +251,57 @@ export default function AdminAttendancePage() {
             <Download className="w-4 h-4" />
             Export CSV
           </button>
+        </div>
+      </div>
+
+      <div className="card bg-emerald-500/5 border-emerald-500/20">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Fingerprint className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-zinc-900 dark:text-zinc-100">ESSL biometric device</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mt-1 text-xs">
+                Sync punch in/out from your ESSL eBioServer. Map members to device enroll numbers first,
+                then sync logs to show attendance here.
+              </p>
+              {esslStatus && (
+                <div className="flex flex-wrap gap-3 mt-2 text-xs text-zinc-500">
+                  <span>
+                    API: {esslStatus.configured ? (
+                      <span className="text-emerald-600">configured</span>
+                    ) : (
+                      <span className="text-amber-600">not configured</span>
+                    )}
+                  </span>
+                  <span>{esslStatus.mappedUsers} members mapped</span>
+                  <span>{esslStatus.esslAttendanceRecords} ESSL records</span>
+                  {esslStatus.lastSyncAt && (
+                    <span>Last sync: {formatDate(esslStatus.lastSyncAt)} {formatTime(esslStatus.lastSyncAt)}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleEsslUserSync}
+              disabled={esslUserSyncing}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+            >
+              <Users className={`w-4 h-4 ${esslUserSyncing ? 'animate-pulse' : ''}`} />
+              Sync Users
+            </button>
+            <button
+              type="button"
+              onClick={handleEsslSync}
+              disabled={esslSyncing || !esslStatus?.configured}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${esslSyncing ? 'animate-spin' : ''}`} />
+              Sync Punches
+            </button>
+          </div>
         </div>
       </div>
 
@@ -266,6 +385,7 @@ export default function AdminAttendancePage() {
               <option value="">All Methods</option>
               <option value="manual">Manual</option>
               <option value="biometric">Biometric</option>
+              <option value="essl">ESSL Device</option>
               <option value="face">Face Recognition</option>
               <option value="qr">QR Code</option>
             </select>
@@ -322,8 +442,9 @@ export default function AdminAttendancePage() {
                     <td className="py-3 px-4">
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${getMethodBadge(record.method)}`}>
                         {record.method === 'biometric' && <Fingerprint className="w-3 h-3 inline mr-1" />}
+                        {record.method === 'essl' && <Fingerprint className="w-3 h-3 inline mr-1" />}
                         {record.method === 'face' && <ScanFace className="w-3 h-3 inline mr-1" />}
-                        {record.method}
+                        {record.method === 'essl' ? 'ESSL' : record.method}
                       </span>
                     </td>
                   </tr>
@@ -333,6 +454,96 @@ export default function AdminAttendancePage() {
           </div>
         )}
       </div>
+
+      {showEsslMapping && esslUserData && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-zinc-900 flex items-center justify-between p-5 border-b border-zinc-200 dark:border-zinc-800">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Link2 className="w-5 h-5 text-emerald-500" />
+                ESSL User Mapping
+              </h2>
+              <button
+                onClick={() => setShowEsslMapping(false)}
+                className="text-sm text-zinc-500 hover:text-zinc-700"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-zinc-100 dark:bg-zinc-800 p-3">
+                  <p className="text-zinc-500">ESSL users</p>
+                  <p className="text-lg font-bold">{esslUserData.esslTotal}</p>
+                </div>
+                <div className="rounded-lg bg-zinc-100 dark:bg-zinc-800 p-3">
+                  <p className="text-zinc-500">Already mapped</p>
+                  <p className="text-lg font-bold">{esslUserData.mappedCount}</p>
+                </div>
+              </div>
+
+              {esslUserData.suggestions?.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2">Suggested mappings ({esslUserData.suggestions.length})</p>
+                  <ul className="space-y-2 max-h-48 overflow-y-auto">
+                    {esslUserData.suggestions.map((s: any, i: number) => (
+                      <li
+                        key={i}
+                        className="flex justify-between items-center gap-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-xs"
+                      >
+                        <span>
+                          ESSL #{s.essl.employeeCode} {s.essl.name}
+                        </span>
+                        <span className="text-zinc-500">→</span>
+                        <span className="font-medium">{s.suggestedMember.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={applySuggestedMappings}
+                    className="mt-3 w-full px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600"
+                  >
+                    Apply all suggested mappings
+                  </button>
+                </div>
+              )}
+
+              {esslUserData.unmappedEssl?.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2 text-amber-600">
+                    Unmapped ESSL users ({esslUserData.unmappedEsslCount})
+                  </p>
+                  <p className="text-xs text-zinc-500 mb-2">
+                    Set enroll numbers manually in Members → Edit for each member.
+                  </p>
+                  <ul className="space-y-1 max-h-32 overflow-y-auto text-xs text-zinc-600 dark:text-zinc-400">
+                    {esslUserData.unmappedEssl.slice(0, 10).map((e: any, i: number) => (
+                      <li key={i}>#{e.employeeCode} — {e.name || 'Unknown'}</li>
+                    ))}
+                    {esslUserData.unmappedEssl.length > 10 && (
+                      <li>…and {esslUserData.unmappedEssl.length - 10} more</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {esslUserData.unmappedMembers?.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2">
+                    Gym members without ESSL ID ({esslUserData.unmappedMembersCount})
+                  </p>
+                  <ul className="space-y-1 max-h-24 overflow-y-auto text-xs text-zinc-600 dark:text-zinc-400">
+                    {esslUserData.unmappedMembers.slice(0, 5).map((m: any) => (
+                      <li key={m.id}>{m.name} ({m.phone})</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

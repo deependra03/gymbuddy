@@ -15,6 +15,7 @@ const trainingSessionsRoutes = require('./routes/training-sessions');
 const trainersRoutes = require('./routes/trainers');
 const notificationRoutes = require('./routes/notifications');
 const faceRoutes = require('./routes/face');
+const esslRoutes = require('./routes/essl');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/training-sessions', trainingSessionsRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/trainers', trainersRoutes);
+app.use('/api/essl', esslRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

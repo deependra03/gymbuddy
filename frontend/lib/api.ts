@@ -119,6 +119,15 @@ export const attendanceApi = {
   stats: (params?: { startDate?: string; endDate?: string }) => api.get('/attendance/stats', { params }),
 };
 
+// ESSL biometric device
+export const esslApi = {
+  status: () => api.get('/essl/status'),
+  sync: (data?: { fromDate?: string; toDate?: string }) => api.post('/essl/sync', data),
+  syncUsers: () => api.get('/essl/users'),
+  mapUsers: (mappings: { memberId: string; esslEnrollNumber: number | string }[]) =>
+    api.post('/essl/users/map', { mappings }),
+};
+
 // Face enrollment
 export const faceApi = {
   status: () => api.get<{ enrolled: boolean }>('/face/status'),
