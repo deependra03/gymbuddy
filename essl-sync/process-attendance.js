@@ -9,8 +9,7 @@
  * Schedule: Run every 5 minutes via Windows Task Scheduler or cron
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../backend/src/lib/prisma');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
@@ -373,8 +372,6 @@ async function processAttendanceLogs() {
   } catch (error) {
     console.error('Fatal error:', error);
     throw error;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -406,3 +403,4 @@ if (require.main === module) {
 }
 
 module.exports = { processAttendanceLogs };
+
