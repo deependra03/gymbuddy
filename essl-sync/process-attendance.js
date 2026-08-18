@@ -9,7 +9,7 @@
  * Schedule: Run every 5 minutes via Windows Task Scheduler or cron
  */
 
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('../backend/generated/prisma');
 const prisma = new PrismaClient();
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
