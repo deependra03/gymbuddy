@@ -338,3 +338,4 @@ model AttendanceLog {
   @@index([esslEnrollNumber])
   @@map("attendance_logs")
 }
+
