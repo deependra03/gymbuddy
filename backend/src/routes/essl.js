@@ -331,6 +331,24 @@ router.post(
   }
 );
 
+// GET /api/essl/sync/process-logs - Process ESSL attendance logs from attendance_logs table
+router.get(
+  '/sync/process-logs',
+  async (req, res) => {
+    try {
+      const { processAttendanceLogs } = require('../../../essl-sync/process-attendance');
+      await processAttendanceLogs();
+      res.json({
+        message: 'ESSL attendance logs processed successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('ESSL log processing error:', err);
+      res.status(500).json({ error: err.message || 'Failed to process attendance logs' });
+    }
+  }
+);
+
 router.use(authenticate);
 
 // GET /api/essl/status - Sync status and configuration
